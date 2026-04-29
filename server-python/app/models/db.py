@@ -6,23 +6,45 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Firebase Initialization
-# Expects a service account key JSON file path in .env as FIREBASE_SERVICE_ACCOUNT
-# Or looks for firebase-key.json in the current directory
-cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT", "firebase-key.json")
+# Supports three modes:
+# 1. FIREBASE_SERVICE_ACCOUNT_JSON env var (for Vercel/Cloud)
+# 2. FIREBASE_SERVICE_ACCOUNT file path env var
+# 3. Default firebase-key.json file
 
-if os.path.exists(cred_path):
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET", "telemedicine-a28a0.firebasestorage.app")
-    })
-    print(f"Firebase Admin SDK initialized using {cred_path}")
+service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+cred = None
+
+if service_account_json:
+    import json
+    import tempfile
+    # Vercel doesn't like local file paths for certs, but we can pass the dict
+    try:
+        service_account_info = json.loads(service_account_json)
+        cred = credentials.Certificate(service_account_info)
+        print("Firebase Admin SDK initialized using environment JSON")
+    except Exception as e:
+        print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+
+if not cred:
+    cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT", "firebase-key.json")
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        print(f"Firebase Admin SDK initialized using {cred_path}")
+
+if cred:
+    try:
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET", "telemedicine-a28a0.firebasestorage.app")
+        })
+    except ValueError:
+        # App already initialized
+        pass
 else:
-    # Fallback to default credentials (works in GCP environments or if GOOGLE_APPLICATION_CREDENTIALS is set)
     try:
         firebase_admin.initialize_app()
         print("Firebase Admin SDK initialized using default credentials")
     except Exception as e:
-        print(f"CRITICAL: Firebase could not be initialized. Please provide a service account key. Error: {e}")
+        print(f"CRITICAL: Firebase could not be initialized. Error: {e}")
 
 db = firestore.client()
 bucket = storage.bucket()

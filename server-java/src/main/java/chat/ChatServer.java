@@ -39,25 +39,33 @@ public class ChatServer extends WebSocketServer {
 
     private void initFirebase() {
         try {
-            String credPath = System.getenv("FIREBASE_SERVICE_ACCOUNT") != null ? 
-                System.getenv("FIREBASE_SERVICE_ACCOUNT") : "firebase-key.json";
+            String serviceAccountJson = System.getenv("FIREBASE_SERVICE_ACCOUNT_JSON");
+            GoogleCredentials credentials;
 
-            if (new java.io.File(credPath).exists()) {
-                FileInputStream serviceAccount = new FileInputStream(credPath);
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .setStorageBucket("telemedicine-a28a0.firebasestorage.app")
-                        .build();
-
-                if (FirebaseApp.getApps().isEmpty()) {
-                    FirebaseApp.initializeApp(options);
-                }
-                System.out.println("Firebase Admin SDK initialized successfully in Java Server.");
+            if (serviceAccountJson != null && !serviceAccountJson.isEmpty()) {
+                credentials = GoogleCredentials.fromStream(new java.io.ByteArrayInputStream(serviceAccountJson.getBytes()));
+                System.out.println("Firebase Admin SDK initialized using environment JSON in Java Server.");
             } else {
-                System.err.println("CRITICAL: firebase-key.json not found. Firebase will use default credentials.");
-                if (FirebaseApp.getApps().isEmpty()) {
-                    FirebaseApp.initializeApp();
+                String credPath = System.getenv("FIREBASE_SERVICE_ACCOUNT") != null ? 
+                    System.getenv("FIREBASE_SERVICE_ACCOUNT") : "firebase-key.json";
+
+                if (new java.io.File(credPath).exists()) {
+                    FileInputStream serviceAccount = new FileInputStream(credPath);
+                    credentials = GoogleCredentials.fromStream(serviceAccount);
+                    System.out.println("Firebase Admin SDK initialized using " + credPath + " in Java Server.");
+                } else {
+                    System.err.println("CRITICAL: Firebase credentials not found. Falling back to default.");
+                    credentials = GoogleCredentials.getApplicationDefault();
                 }
+            }
+
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(credentials)
+                    .setStorageBucket("telemedicine-a28a0.firebasestorage.app")
+                    .build();
+
+            if (FirebaseApp.getApps().isEmpty()) {
+                FirebaseApp.initializeApp(options);
             }
             
             db = FirestoreClient.getFirestore();
