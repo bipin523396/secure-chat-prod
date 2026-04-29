@@ -11,9 +11,9 @@ from app.routes.calls import calls_bp
 import os
 
 def create_app():
-    # Use absolute path for static folder to avoid issues on Vercel
+    # Files moved to root for better Vercel support
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    static_dir = os.path.join(base_dir, 'public')
+    static_dir = base_dir
     app = Flask(__name__, static_folder=static_dir, static_url_path='')
     
     # Configure CORS to allow all for API routes
