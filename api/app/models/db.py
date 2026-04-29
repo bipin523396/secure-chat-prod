@@ -26,10 +26,24 @@ if service_account_json:
         print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
 
 if not cred:
-    cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT", "firebase-key.json")
-    if os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
-        print(f"Firebase Admin SDK initialized using {cred_path}")
+    # Try multiple possible locations for firebase-key.json
+    possible_paths = [
+        os.getenv("FIREBASE_SERVICE_ACCOUNT", "firebase-key.json"),
+        os.path.join(os.path.dirname(__file__), "..", "..", "firebase-key.json"),
+        os.path.join(os.path.dirname(__file__), "..", "firebase-key.json"),
+        os.path.join(os.path.dirname(__file__), "firebase-key.json"),
+        "/var/task/api/firebase-key.json", # Common Vercel path
+        "/var/task/firebase-key.json"
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                cred = credentials.Certificate(path)
+                print(f"Firebase Admin SDK initialized using {path}")
+                break
+            except Exception as e:
+                print(f"Error loading creds from {path}: {e}")
 
 if cred:
     try:
@@ -39,23 +53,37 @@ if cred:
     except ValueError:
         # App already initialized
         pass
+    except Exception as e:
+        print(f"Error initializing Firebase app: {e}")
 else:
     try:
+        # Try default credentials (ADC)
         firebase_admin.initialize_app()
         print("Firebase Admin SDK initialized using default credentials")
     except Exception as e:
-        print(f"CRITICAL: Firebase could not be initialized. Error: {e}")
+        print(f"CRITICAL: Firebase could not be initialized. No key found and ADC failed. Error: {e}")
 
-db = firestore.client()
-bucket = storage.bucket()
+# Global db and bucket objects
+try:
+    db = firestore.client()
+    bucket = storage.bucket()
+except Exception as e:
+    print(f"CRITICAL ERROR initializing Firestore/Storage: {e}")
+    db = None
+    bucket = None
 
 # Collections (Helper names to maintain compatibility)
 class CollectionWrapper:
     def __init__(self, name):
         self.name = name
-        self.coll = db.collection(name)
+        try:
+            self.coll = db.collection(name) if db else None
+        except:
+            self.coll = None
 
     def find_one(self, filter):
+        if not self.coll:
+            return None
         if "_id" in filter:
             doc_ref = self.coll.document(str(filter["_id"]))
             doc = doc_ref.get()
@@ -76,6 +104,8 @@ class CollectionWrapper:
         return None
 
     def insert_one(self, data):
+        if not self.coll:
+            return None
         if "_id" in data:
             doc_id = str(data.pop("_id"))
             self.coll.document(doc_id).set(data)
@@ -85,6 +115,8 @@ class CollectionWrapper:
             return doc_ref.id
 
     def update_one(self, filter, update):
+        if not self.coll:
+            return None
         target_doc = None
         if "_id" in filter:
             target_doc = self.coll.document(str(filter["_id"]))

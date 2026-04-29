@@ -8,8 +8,13 @@ from app.routes.status import status_bp
 from app.routes.messages import messages_bp
 from app.routes.calls import calls_bp
 
+import os
+
 def create_app():
-    app = Flask(__name__, static_folder='../../public', static_url_path='')
+    # Use absolute path for static folder to avoid issues on Vercel
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    static_dir = os.path.join(base_dir, 'public')
+    app = Flask(__name__, static_folder=static_dir, static_url_path='')
     
     # Configure CORS to allow all for API routes
     CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -27,10 +32,24 @@ def create_app():
     
     @app.route('/')
     def index():
-        return app.send_static_file('index.html')
+        try:
+            return app.send_static_file('index.html')
+        except:
+            return "SecureChat Backend is running. Frontend might not be bundled correctly in this environment.", 200
         
     @app.route('/<path:path>')
     def static_files(path):
-        return app.send_static_file(path)
+        try:
+            return app.send_static_file(path)
+        except:
+            return "File not found", 404
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        # Pass through HTTP errors
+        if hasattr(e, 'code'):
+            return jsonify({"error": str(e)}), e.code
+        # Handle non-HTTP errors
+        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
 
     return app

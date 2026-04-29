@@ -1,5 +1,13 @@
 const REST_URL = "/api";
-const WS_URL = `ws://${window.location.hostname}:5001`;
+// On Vercel, we might need to connect to a different WebSocket server.
+// For now, we use the same host but warn if it's likely to fail.
+const WS_URL = window.location.hostname.includes("vercel.app") 
+    ? `wss://your-java-server.onrender.com` // Placeholder for user to update
+    : `ws://${window.location.hostname}:5001`;
+
+if (window.location.hostname.includes("vercel.app")) {
+    console.warn("WebSocket connections to port 5001 usually fail on Vercel. Ensure your Java server is hosted elsewhere and update WS_URL in app.js.");
+}
 
 let socket = null;
 let currentUsername = null;
