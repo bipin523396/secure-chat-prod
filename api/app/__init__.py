@@ -9,7 +9,7 @@ from app.routes.messages import messages_bp
 from app.routes.calls import calls_bp
 
 def create_app():
-    app = Flask(__name__, static_folder='../../client', static_url_path='')
+    app = Flask(__name__, static_folder='../../public', static_url_path='')
     
     # Configure CORS to allow all for API routes
     CORS(app, resources={r"/api/*": {"origins": "*"}})
