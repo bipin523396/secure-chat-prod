@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureChat</title>
+  <link rel="stylesheet" href="css/whatsapp.css">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+  <!-- Auth Container -->
+  <div id="auth-container">
+    <div class="auth-card">
+      <h1>SecureChat</h1>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="e.g. bipin">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+      <button class="auth-btn" id="login-btn">Log In</button>
+      <div style="text-align: center; margin: 15px 0; color: #667781;">or</div>
+      <button class="auth-btn" style="background: #54656f;" id="register-btn">Register</button>
+      <p id="auth-error" class="hidden"></p>
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div id="chat-container" class="app-container hidden">
+    
+    <!-- Far Left Sidebar -->
+    <nav class="nav-sidebar">
+      <div class="nav-item active" id="nav-chats" title="Chats">
+        <i class="ph-bold ph-chat-circle-dots"></i>
+        <span class="badge hidden" id="total-unread-badge">0</span>
+      </div>
+      <div class="nav-item" title="Status"><i class="ph-bold ph-aperture"></i></div>
+      <div class="nav-item" title="Calls"><i class="ph-bold ph-phone"></i></div>
+      <div class="nav-item" title="Starred"><i class="ph-bold ph-star"></i></div>
+      <div class="nav-item" title="Archived"><i class="ph-bold ph-archive"></i></div>
+      
+      <div class="nav-bottom">
+        <div class="nav-item" id="add-friend-btn" title="Add Contact"><i class="ph-bold ph-user-plus"></i></div>
+        <div class="nav-item" id="settings-btn" title="Settings"><i class="ph-bold ph-gear"></i></div>
+        <div class="nav-item" id="logout-btn" title="Log Out"><i class="ph-bold ph-sign-out"></i></div>
+      </div>
+    </nav>
+
+    <!-- Chats Column -->
+    <aside class="chats-column" id="chats-column">
+      <div class="chats-header">
+        <h2>Chats</h2>
+        <i class="ph-bold ph-note-pencil" style="font-size: 20px; cursor: pointer; color: #54656f;"></i>
+      </div>
+      <div class="search-box">
+        <div class="search-inner">
+          <i class="ph ph-magnifying-glass"></i>
+          <input type="text" placeholder="Search" id="contact-search-input">
+        </div>
+      </div>
+      <div class="contact-list" id="contact-list">
+        <!-- Friends will be injected here -->
+      </div>
+    </aside>
+
+    <!-- Settings Panel (replaces chats column when active) -->
+    <aside class="chats-column hidden" id="settings-column">
+      <div class="chats-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <i class="ph-bold ph-arrow-left" id="settings-back-btn" style="cursor:pointer;font-size:20px;color:#54656f;"></i>
+          <h2>Settings</h2>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div class="settings-profile">
+        <div class="settings-avatar" id="settings-avatar">B</div>
+        <div class="settings-profile-info">
+          <div class="settings-username" id="settings-username-display">bipin</div>
+          <div class="settings-status-text" id="settings-status-text">Hey there! I am using SecureChat.</div>
+        </div>
+      </div>
+
+      <div class="settings-list">
+
+        <!-- Notifications -->
+        <div class="settings-section-title">Notifications</div>
+        <div class="settings-item">
+          <i class="ph ph-bell"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Message notifications</div>
+            <div class="settings-item-desc">Show for new messages</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-notif" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <i class="ph ph-speaker-high"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Notification sounds</div>
+            <div class="settings-item-desc">Play sound for new messages</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-sound" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Privacy -->
+        <div class="settings-section-title">Privacy</div>
+        <div class="settings-item">
+          <i class="ph ph-eye"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Read receipts</div>
+            <div class="settings-item-desc">Show double blue ticks</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-read-receipts" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <i class="ph ph-clock"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Last seen & online</div>
+            <div class="settings-item-desc">Show your online status</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-online-status" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <i class="ph ph-pencil"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Typing indicator</div>
+            <div class="settings-item-desc">Show when you're typing</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-typing" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Appearance -->
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-item">
+          <i class="ph ph-moon"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Dark mode</div>
+            <div class="settings-item-desc">Switch to dark theme</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="setting-dark-mode">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <i class="ph ph-text-aa"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Font size</div>
+            <div class="settings-item-desc">Small · Medium · Large</div>
+          </div>
+          <select id="setting-font-size" class="settings-select">
+            <option value="13">Small</option>
+            <option value="15" selected>Medium</option>
+            <option value="17">Large</option>
+          </select>
+        </div>
+        <div class="settings-item">
+          <i class="ph ph-wallpaper"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Chat wallpaper</div>
+            <div class="settings-item-desc">Change background</div>
+          </div>
+          <select id="setting-wallpaper" class="settings-select">
+            <option value="default">Default</option>
+            <option value="dark">Dark</option>
+            <option value="none">Plain</option>
+          </select>
+        </div>
+
+        <!-- Security -->
+        <div class="settings-section-title">Security</div>
+        <div class="settings-item">
+          <i class="ph ph-lock"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">End-to-end encryption</div>
+            <div class="settings-item-desc" style="color: var(--primary-green);">✓ Active — All messages encrypted</div>
+          </div>
+        </div>
+        <div class="settings-item" id="view-fingerprint-btn" style="cursor:pointer;">
+          <i class="ph ph-fingerprint"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">Security code</div>
+            <div class="settings-item-desc">View your encryption fingerprint</div>
+          </div>
+          <i class="ph ph-caret-right" style="color:#667781;"></i>
+        </div>
+
+        <!-- About -->
+        <div class="settings-section-title">About</div>
+        <div class="settings-item">
+          <i class="ph ph-info"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label">SecureChat v1.0</div>
+            <div class="settings-item-desc">Built with E2EE · Flask · Java WS</div>
+          </div>
+        </div>
+        <div class="settings-item" id="logout-settings-btn" style="cursor:pointer; color:#ea0038;">
+          <i class="ph ph-sign-out" style="color:#ea0038;"></i>
+          <div class="settings-item-info">
+            <div class="settings-item-label" style="color:#ea0038;">Log out</div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <main class="chat-area" id="chat-area">
+      <!-- Empty State -->
+      <div id="empty-chat" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: #667781;">
+        <div style="width:200px;height:200px;background:var(--primary-green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:40px;opacity:0.15;">
+          <i class="ph-bold ph-chat-circle-dots" style="font-size:100px;color:#000;"></i>
+        </div>
+        <h1 style="font-weight: 300; font-size: 32px; color: #41525d; margin-bottom: 15px;">SecureChat Web</h1>
+        <p style="font-size: 14px; max-width: 450px; line-height: 20px;">Send and receive end-to-end encrypted messages privately.</p>
+        <div style="margin-top:20px;font-size:12px;color:#aab2ba;display:flex;align-items:center;gap:6px;">
+          <i class="ph ph-lock-key"></i> Your messages are secured with AES-256 encryption
+        </div>
+      </div>
+
+      <!-- Active Chat -->
+      <div id="active-chat" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="chat-header">
+          <div class="contact-avatar" id="active-chat-avatar" style="width: 40px; height: 40px; font-size: 20px;"></div>
+          <div class="header-info">
+            <div class="header-name" id="chat-with-name"></div>
+            <div class="header-status" id="chat-with-status">online</div>
+          </div>
+          <div class="header-actions">
+            <i class="ph ph-magnifying-glass" title="Search"></i>
+            <i class="ph ph-dots-three-vertical" title="More options"></i>
+          </div>
+        </div>
+        
+        <div class="messages-container" id="message-list">
+          <!-- Messages will be injected here -->
+        </div>
+
+        <div class="input-area" id="message-input-area">
+          <i class="ph ph-plus" id="attach-btn" title="Attach file"></i>
+          <input type="file" id="file-input" class="hidden" accept="image/*,.pdf">
+          <div id="edit-indicator" class="edit-indicator hidden">
+            <i class="ph ph-pencil-simple"></i>
+            <span>Editing message</span>
+            <i class="ph ph-x" id="cancel-edit-btn" style="cursor:pointer;margin-left:auto;"></i>
+          </div>
+          <input type="text" id="message-input" class="input-box" placeholder="Type a message">
+          <i class="ph ph-smiley" title="Emoji"></i>
+          <button id="send-btn" style="background: transparent; border: none; outline: none;">
+            <i class="ph-bold ph-paper-plane-right" id="send-icon" style="font-size:24px;color:var(--primary-green);cursor:pointer;"></i>
+          </button>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Add Friend Modal -->
+  <div id="add-friend-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Contact</h3>
+        <i class="ph ph-x close-modal" style="cursor: pointer;"></i>
+      </div>
+      <div class="search-inner" style="margin-bottom: 15px;">
+        <i class="ph ph-magnifying-glass"></i>
+        <input type="text" id="global-search-input" placeholder="Search by username...">
+      </div>
+      <div id="global-search-results" style="max-height: 300px; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="msg-context-menu" class="context-menu hidden">
+    <div class="context-item" id="ctx-reply"><i class="ph ph-arrow-bend-up-left"></i> Reply</div>
+    <div class="context-item" id="ctx-copy"><i class="ph ph-copy"></i> Copy</div>
+    <div class="context-item" id="ctx-edit"><i class="ph ph-pencil-simple"></i> Edit</div>
+    <div class="context-item danger" id="ctx-delete"><i class="ph ph-trash"></i> Delete</div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="width:320px;text-align:center;">
+      <h3 style="margin-bottom:20px;">Delete message?</h3>
+      <p style="color:#667781;font-size:14px;margin-bottom:24px;">Choose who to delete this message for.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="auth-btn" id="delete-for-everyone-btn">Delete for Everyone</button>
+        <button class="auth-btn" id="delete-for-me-btn" style="background:#54656f;">Delete for Me</button>
+        <button class="auth-btn" id="delete-cancel-btn" style="background:transparent;color:#54656f;border:1px solid #d1d7db;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fingerprint Modal -->
+  <div id="fingerprint-modal" class="modal-overlay hidden">
+    <div class="modal-content" style="text-align:center;">
+      <div class="modal-header">
+        <h3>Your Security Code</h3>
+        <i class="ph ph-x close-modal" style="cursor: pointer;"></i>
+      </div>
+      <i class="ph-bold ph-fingerprint" style="font-size:60px;color:var(--primary-green);margin:20px 0;display:block;"></i>
+      <p style="font-size:12px;color:#667781;margin-bottom:15px;">This is your unique encryption fingerprint. Share it with your contacts to verify your identity.</p>
+      <div id="fingerprint-display" style="font-family:monospace;font-size:11px;background:#f0f2f5;padding:15px;border-radius:8px;word-break:break-all;color:#111b21;"></div>
+    </div>
+  </div>
+
+  <script src="crypto.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
