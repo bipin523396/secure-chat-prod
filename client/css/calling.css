@@ -1,0 +1,241 @@
+/* calling.css — WhatsApp-Style Call UI */
+
+.call-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: #0b141a;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: inherit;
+}
+
+.call-window {
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+  max-height: 800px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #111b21;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.call-bg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #1e2429, #0b141a);
+}
+
+.caller-profile {
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.caller-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #667781;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  color: #fff;
+  border: 3px solid rgba(255,255,255,0.1);
+}
+
+.caller-profile h2 {
+  font-size: 28px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.caller-profile p {
+  font-size: 16px;
+  color: #8696a0;
+}
+
+#call-timer {
+  margin-top: 10px;
+  font-family: monospace;
+  font-size: 18px;
+  color: #00a884;
+}
+
+/* Video Styles */
+.video-container {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: #000;
+}
+
+#remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.self-video-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 200px;
+  height: 150px;
+  background: #1e2429;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  z-index: 10;
+}
+
+#local-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror */
+}
+
+/* Call Controls */
+.call-controls {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 25px;
+  background: rgba(11, 20, 26, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.control-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.control-btn.active {
+  background: #fff;
+  color: #111b21;
+}
+
+.control-btn.hangup {
+  background: #ea0038;
+  width: 64px;
+  height: 64px;
+  font-size: 28px;
+}
+
+.control-btn.hangup:hover {
+  background: #c0002e;
+  transform: scale(1.05);
+}
+
+/* Incoming Call Popup */
+.incoming-call-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 320px;
+  background: #1e2429;
+  color: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 11000;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideInRight 0.3s ease;
+  border: 1px solid #2a3942;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.incoming-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.incoming-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #00a884;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.incoming-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.incoming-details strong {
+  font-size: 16px;
+}
+
+.incoming-details span {
+  font-size: 13px;
+  color: #8696a0;
+}
+
+.incoming-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.incoming-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.incoming-btn:hover {
+  opacity: 0.9;
+}
+
+.incoming-btn.accept {
+  background: #00a884;
+  color: #fff;
+}
+
+.incoming-btn.reject {
+  background: #ea0038;
+  color: #fff;
+}

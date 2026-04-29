@@ -4,7 +4,7 @@ import jwt
 from flask import Blueprint, request, jsonify
 from app.models.db import users_collection
 from app.utils.jwt_utils import generate_tokens, JWT_REFRESH_SECRET, token_required
-from bson import ObjectId
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -16,7 +16,7 @@ def update_public_key(current_user_id):
         return jsonify({'error': 'Missing public key'}), 400
         
     users_collection.update_one(
-        {'_id': ObjectId(current_user_id)},
+        {'_id': current_user_id},
         {'$set': {'public_key': pub_key}}
     )
     return jsonify({'msg': 'Public key updated'}), 200
@@ -70,7 +70,7 @@ def login():
     if identity_hash:
         update_fields['identity_hash'] = identity_hash
         update_fields['public_key'] = identity_hash  # backward compat
-    users_collection.update_one({'_id': user['_id']}, {'$set': update_fields})
+    users_collection.update_one({'_id': str(user['_id'])}, {'$set': update_fields})
 
     access_token, refresh_token = generate_tokens(user['_id'], username)
 
@@ -95,7 +95,7 @@ def refresh():
         username = data['username']
         
         # Verify user still exists
-        user = users_collection.find_one({'_id': ObjectId(current_user_id)})
+        user = users_collection.find_one({'_id': current_user_id})
         if not user:
             return jsonify({'error': 'User no longer exists'}), 401
             

@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SecureChat</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2300a884'/><text y='24' x='4' font-size='24'>🔒</text></svg>">
   <link rel="stylesheet" href="css/whatsapp.css">
+  <link rel="stylesheet" href="css/calling.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
@@ -34,18 +37,18 @@
     <!-- Far Left Sidebar -->
     <nav class="nav-sidebar">
       <div class="nav-item active" id="nav-chats" title="Chats">
-        <i class="ph-bold ph-chat-circle-dots"></i>
+        <i class="ph ph-chat-circle-dots"></i>
         <span class="badge hidden" id="total-unread-badge">0</span>
       </div>
-      <div class="nav-item" title="Status"><i class="ph-bold ph-aperture"></i></div>
-      <div class="nav-item" title="Calls"><i class="ph-bold ph-phone"></i></div>
-      <div class="nav-item" title="Starred"><i class="ph-bold ph-star"></i></div>
-      <div class="nav-item" title="Archived"><i class="ph-bold ph-archive"></i></div>
+      <div class="nav-item" id="nav-status" title="Status"><i class="ph ph-aperture"></i></div>
+      <div class="nav-item" id="nav-calls" title="Calls"><i class="ph ph-phone"></i></div>
+      <div class="nav-item" id="nav-starred" title="Starred"><i class="ph ph-star"></i></div>
+      <div class="nav-item" id="nav-archived" title="Archived"><i class="ph ph-archive"></i></div>
       
       <div class="nav-bottom">
-        <div class="nav-item" id="add-friend-btn" title="Add Contact"><i class="ph-bold ph-user-plus"></i></div>
-        <div class="nav-item" id="settings-btn" title="Settings"><i class="ph-bold ph-gear"></i></div>
-        <div class="nav-item" id="logout-btn" title="Log Out"><i class="ph-bold ph-sign-out"></i></div>
+        <div class="nav-item" id="add-friend-btn" title="Add Contact"><i class="ph ph-user-plus"></i></div>
+        <div class="nav-item" id="settings-btn" title="Settings"><i class="ph ph-gear"></i></div>
+        <div class="nav-item" id="logout-btn" title="Log Out"><i class="ph ph-sign-out"></i></div>
       </div>
     </nav>
 
@@ -222,16 +225,81 @@
       </div>
     </aside>
 
+    <!-- Status Column -->
+    <aside class="chats-column hidden" id="status-column">
+      <div class="chats-header">
+        <h2>Status</h2>
+        <div style="display:flex; gap:12px;">
+          <i class="ph ph-plus" id="upload-status-btn" title="Add Status" style="cursor:pointer; font-size:20px;"></i>
+          <i class="ph ph-dots-three-vertical" style="cursor:pointer; font-size:20px;"></i>
+        </div>
+      </div>
+      <div class="settings-profile" id="my-status-item">
+        <div class="settings-avatar" id="my-status-avatar" style="border: 2px solid var(--primary-green);">M</div>
+        <div class="settings-profile-info">
+          <div class="settings-username">My Status</div>
+          <div class="settings-status-text">Tap to add status update</div>
+        </div>
+      </div>
+      <div class="settings-section-title">Recent Updates</div>
+      <div class="contact-list" id="status-list">
+        <!-- Status items will be injected here -->
+      </div>
+    </aside>
+
+    <!-- Calls Column -->
+    <aside class="chats-column hidden" id="calls-column">
+      <div class="chats-header">
+        <h2>Calls</h2>
+        <i class="ph ph-phone-plus" title="New Call" style="cursor:pointer; font-size:20px;"></i>
+      </div>
+      <div class="search-box">
+        <div class="search-inner">
+          <i class="ph ph-magnifying-glass"></i>
+          <input type="text" placeholder="Search calls" id="call-search-input">
+        </div>
+      </div>
+      <div class="contact-list" id="call-history-list">
+        <!-- Call history items will be injected here -->
+      </div>
+    </aside>
+
+    <!-- Starred Column -->
+    <aside class="chats-column hidden" id="starred-column">
+      <div class="chats-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <i class="ph ph-arrow-left nav-back-btn" style="cursor:pointer;font-size:20px;"></i>
+          <h2>Starred Messages</h2>
+        </div>
+      </div>
+      <div class="contact-list" id="starred-messages-list">
+        <!-- Starred messages will be injected here -->
+      </div>
+    </aside>
+
+    <!-- Archived Column -->
+    <aside class="chats-column hidden" id="archived-column">
+      <div class="chats-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <i class="ph ph-arrow-left nav-back-btn" style="cursor:pointer;font-size:20px;"></i>
+          <h2>Archived</h2>
+        </div>
+      </div>
+      <div class="contact-list" id="archived-list">
+        <!-- Archived chats will be injected here -->
+      </div>
+    </aside>
+
     <!-- Chat Area -->
     <main class="chat-area" id="chat-area">
       <!-- Empty State -->
-      <div id="empty-chat" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: #667781;">
-        <div style="width:200px;height:200px;background:var(--primary-green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:40px;opacity:0.15;">
-          <i class="ph-bold ph-chat-circle-dots" style="font-size:100px;color:#000;"></i>
+      <div id="empty-chat" class="empty-chat-container">
+        <div class="empty-chat-icon-wrapper">
+          <i class="ph-bold ph-chat-circle-dots"></i>
         </div>
-        <h1 style="font-weight: 300; font-size: 32px; color: #41525d; margin-bottom: 15px;">SecureChat Web</h1>
-        <p style="font-size: 14px; max-width: 450px; line-height: 20px;">Send and receive end-to-end encrypted messages privately.</p>
-        <div style="margin-top:20px;font-size:12px;color:#aab2ba;display:flex;align-items:center;gap:6px;">
+        <h1 class="empty-chat-title">SecureChat Web</h1>
+        <p class="empty-chat-subtitle">Send and receive end-to-end encrypted messages privately.</p>
+        <div class="empty-chat-footer">
           <i class="ph ph-lock-key"></i> Your messages are secured with AES-256 encryption
         </div>
       </div>
@@ -245,6 +313,8 @@
             <div class="header-status" id="chat-with-status">online</div>
           </div>
           <div class="header-actions">
+            <i class="ph ph-phone" id="audio-call-btn" title="Audio Call"></i>
+            <i class="ph ph-video-camera" id="video-call-btn" title="Video Call"></i>
             <i class="ph ph-magnifying-glass" title="Search"></i>
             <i class="ph ph-dots-three-vertical" title="More options"></i>
           </div>
@@ -256,7 +326,7 @@
 
         <div class="input-area" id="message-input-area">
           <i class="ph ph-plus" id="attach-btn" title="Attach file"></i>
-          <input type="file" id="file-input" class="hidden" accept="image/*,.pdf">
+          <input type="file" id="file-input" class="hidden" accept="image/*,.pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx">
           <div id="edit-indicator" class="edit-indicator hidden">
             <i class="ph ph-pencil-simple"></i>
             <span>Editing message</span>
@@ -284,8 +354,20 @@
         <i class="ph ph-magnifying-glass"></i>
         <input type="text" id="global-search-input" placeholder="Search by username...">
       </div>
-      <div id="global-search-results" style="max-height: 300px; overflow-y: auto;"></div>
+      <div id="global-search-results" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;"></div>
+      
+      <div id="pending-requests-section" class="hidden">
+        <div class="settings-section-title" style="padding: 10px 0;">Pending Requests</div>
+        <div id="pending-requests-list" style="max-height: 200px; overflow-y: auto;"></div>
+      </div>
     </div>
+  </div>
+
+  <!-- Contact Context Menu -->
+  <div id="contact-context-menu" class="context-menu hidden">
+    <div class="context-item" id="ctx-archive"><i class="ph ph-archive"></i> Archive Chat</div>
+    <div class="context-item" id="ctx-pin"><i class="ph ph-push-pin"></i> Pin Chat</div>
+    <div class="context-item danger" id="ctx-delete-chat"><i class="ph ph-trash"></i> Delete Chat</div>
   </div>
 
   <!-- Context Menu -->
@@ -322,7 +404,86 @@
     </div>
   </div>
 
+  <!-- Call Overlay -->
+  <div id="call-overlay" class="call-overlay hidden">
+    <div class="call-window">
+      <!-- Background / Profile Container -->
+      <div class="call-bg">
+        <div class="caller-profile">
+          <div class="caller-avatar" id="call-avatar">?</div>
+          <h2 id="call-username">User</h2>
+          <p id="call-status">Calling...</p>
+          <p id="call-timer" class="hidden">00:00</p>
+        </div>
+      </div>
+
+      <!-- Video Containers -->
+      <div id="video-container" class="video-container hidden">
+        <video id="remote-video" autoplay playsinline></video>
+        <div class="self-video-wrapper">
+          <video id="local-video" autoplay playsinline muted></video>
+        </div>
+      </div>
+
+      <!-- Call Controls -->
+      <div class="call-controls">
+        <button class="control-btn" id="call-mic-btn" title="Mute/Unmute"><i class="ph ph-microphone"></i></button>
+        <button class="control-btn" id="call-video-btn" title="Camera On/Off"><i class="ph ph-video-camera"></i></button>
+        <button class="control-btn hangup" id="call-hangup-btn" title="End Call"><i class="ph ph-phone-slash"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incoming Call Popup -->
+  <div id="incoming-call-popup" class="incoming-call-popup hidden">
+    <div class="incoming-info">
+      <div class="incoming-avatar" id="incoming-avatar">?</div>
+      <div class="incoming-details">
+        <strong id="incoming-username">User</strong>
+        <span>Incoming <span id="incoming-type">video</span> call...</span>
+      </div>
+    </div>
+    <div class="incoming-actions">
+      <button class="incoming-btn reject" id="incoming-reject-btn"><i class="ph ph-phone-slash"></i></button>
+      <button class="incoming-btn accept" id="incoming-accept-btn"><i class="ph ph-phone"></i></button>
+    </div>
+  </div>
+
+  <!-- Audio Elements for Ringing -->
+  <audio id="ringtone-out" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" loop></audio>
+  <audio id="ringtone-in" src="https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3" loop></audio>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPwJqfyL0Gr-Dv0XzmtSGlCOQLQdxnS5w",
+      authDomain: "telemedicine-a28a0.firebaseapp.com",
+      projectId: "telemedicine-a28a0",
+      storageBucket: "telemedicine-a28a0.firebasestorage.app",
+      messagingSenderId: "1053953163282",
+      appId: "1:1053953163282:web:e26201dcfd56f4824218cb",
+      measurementId: "G-H7VBS65W5H"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+    
+    // Make db available globally for analytics or direct firestore access if needed
+    window.firebaseApp = app;
+    window.firestore = db;
+    console.log("Firebase initialized successfully");
+  </script>
+
+  <div id="toast-container" class="toast-container"></div>
   <script src="crypto.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/calling.js"></script>
+
 </body>
 </html>

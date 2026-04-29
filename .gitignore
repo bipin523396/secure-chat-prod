@@ -23,3 +23,10 @@ dependency-reduced-pom.xml
 
 # OS
 .DS_Store
+
+# SecureChat specific
+firebase-key.json
+*.log
+*.pid
+uploads/
+.venv*/

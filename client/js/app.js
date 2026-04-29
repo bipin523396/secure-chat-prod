@@ -25,9 +25,22 @@ const chatContainer = document.getElementById("chat-container");
 const authError = document.getElementById("auth-error");
 
 function showError(msg, isSuccess = false) {
-  authError.textContent = msg;
-  authError.classList.remove("hidden");
-  authError.style.color = isSuccess ? "var(--primary-green)" : "red";
+  if (isSuccess) showToast(msg);
+  else {
+    authError.textContent = msg;
+    authError.classList.remove("hidden");
+    authError.style.color = "red";
+  }
+}
+
+function showToast(msg) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `<span>${msg}</span>`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 // =========================================================
@@ -151,6 +164,10 @@ function renderFriends() {
       </div>
     `;
     div.onclick = () => openChat(f);
+    div.oncontextmenu = (e) => {
+      e.preventDefault();
+      showContactContextMenu(e, f);
+    };
     list.appendChild(div);
   });
 }
@@ -168,14 +185,16 @@ async function openChat(friend) {
   updatePresenceUI(friend.username, friend.is_online, friend.last_seen);
   document.getElementById("message-list").innerHTML = "";
 
-  wsSend("fetch_history", { withUser: friend.username }, true).then(async msgs => {
-    if (msgs && msgs.length > 0) {
-      for (const m of msgs) {
-        await appendMessage(m);
-      }
-    }
-    wsSend("mark_read", { sender: friend.username });
-  });
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    wsSend("fetch_history", { withUser: friend.username }, true)
+      .then(async msgs => {
+        if (msgs && msgs.length > 0) {
+          for (const m of msgs) await appendMessage(m);
+        }
+        wsSend("mark_read", { sender: friend.username });
+      })
+      .catch(err => console.warn("[WS] fetch_history failed:", err));
+  }
 
   renderFriends();
 }
@@ -299,6 +318,10 @@ async function appendMessage(data, preDecrypted = null) {
     return;
   }
 
+  if (data.starred) {
+    msgDiv.classList.add("starred-msg-highlight");
+  }
+
   if (isFile) {
     const fileUrl = `${REST_URL}/media/download/${data.file_id}`;
     const fileBubble = document.createElement("div");
@@ -312,9 +335,28 @@ async function appendMessage(data, preDecrypted = null) {
       fileBubble.appendChild(img);
     } else {
       const link = document.createElement("a");
-      link.className = "pdf-attachment";
-      link.onclick = (e) => { e.preventDefault(); fetchWithAuth(fileUrl).then(r => r.blob()).then(blob => window.open(URL.createObjectURL(blob), "_blank")); };
-      link.innerHTML = `<i class="ph-bold ph-file-pdf"></i><div class="pdf-attachment-info"><div class="pdf-attachment-name">${data.file_name || "Document"}</div><div class="pdf-attachment-size">Tap to open</div></div><i class="ph ph-download-simple" style="font-size:18px;color:var(--primary-green);"></i>`;
+      link.className = "file-attachment";
+      link.onclick = (e) => { e.preventDefault(); fetchWithAuth(fileUrl).then(r => r.blob()).then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.file_name || 'download';
+        a.click();
+      }); };
+      
+      let iconClass = "ph-file";
+      if (data.file_type?.includes("pdf")) iconClass = "ph-file-pdf";
+      else if (data.file_type?.includes("zip") || data.file_type?.includes("archive")) iconClass = "ph-file-archive";
+      else if (data.file_type?.includes("word") || data.file_name?.endsWith(".doc") || data.file_name?.endsWith(".docx")) iconClass = "ph-file-doc";
+      
+      link.innerHTML = `
+        <i class="ph-bold ${iconClass}"></i>
+        <div class="file-attachment-info">
+          <div class="file-attachment-name">${data.file_name || "File"}</div>
+          <div class="file-attachment-size">Tap to download</div>
+        </div>
+        <i class="ph ph-download-simple" style="font-size:18px;color:var(--primary-green);"></i>
+      `;
       fileBubble.appendChild(link);
     }
     msgDiv.appendChild(fileBubble);
@@ -361,6 +403,7 @@ function buildMeta(data, isMe) {
   meta.className = "message-meta";
   const time = new Date(data.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   let editedLabel = data.edited ? `<span class="edited-label">edited</span>` : "";
+  let starIcon = data.starred ? `<i class="ph-fill ph-star" style="color:#8696a0; font-size:10px; margin-right:4px;"></i>` : "";
   let ticks = "";
   if (isMe) {
     const isRead = data.status === "read";
@@ -368,7 +411,7 @@ function buildMeta(data, isMe) {
     const color = isRead ? "#53bdeb" : "var(--text-secondary)";
     ticks = `<i class="ph-bold ${icon}" style="color: ${color};"></i>`;
   }
-  meta.innerHTML = `${editedLabel}<span>${time}</span>${ticks}`;
+  meta.innerHTML = `${starIcon}${editedLabel}<span>${time}</span>${ticks}`;
   return meta;
 }
 
@@ -380,7 +423,21 @@ function connectSocket() {
   if (socket) socket.close();
   socket = new WebSocket(`${WS_URL}?token=${accessToken}`);
 
-  socket.onopen = () => console.log("[WS] Connected");
+  socket.onopen = () => {
+    console.log("[WS] Connected");
+    // Re-fetch history for active chat after connect/reconnect
+    if (activeChatUser) {
+      document.getElementById("message-list").innerHTML = "";
+      wsSend("fetch_history", { withUser: activeChatUser.username }, true)
+        .then(async msgs => {
+          if (msgs && msgs.length > 0) {
+            for (const m of msgs) await appendMessage(m);
+          }
+          wsSend("mark_read", { sender: activeChatUser.username });
+        })
+        .catch(() => {});
+    }
+  };
   socket.onclose = () => {
     console.log("[WS] Disconnected. Reconnecting...");
     setTimeout(connectSocket, 3000);
@@ -411,7 +468,7 @@ function connectSocket() {
       case "message_edited":
         const editEl = document.getElementById(`msg-${payload.message_id}`);
         if (editEl) {
-          const chatPartner = editEl.dataset.isMe === "true" ? activeChatUser?.username : payload.sender;
+          const chatPartner = activeChatUser?.username;
           (async () => {
              try {
                const key = await getSharedKey(chatPartner);
@@ -444,8 +501,8 @@ function connectSocket() {
         }
         break;
 
-      case "typing":
-        if (activeChatUser && activeChatUser.username === payload.username) {
+      case "typing_event":
+        if (activeChatUser && activeChatUser.username === payload.sender) {
           const statusEl = document.getElementById("chat-with-status");
           if (statusEl) {
             if (payload.is_typing) statusEl.textContent = "typing...";
@@ -471,6 +528,27 @@ function connectSocket() {
           const ticks = readMsgEl.querySelector(".ph-checks");
           if (ticks) ticks.style.color = "#53bdeb";
         }
+        break;
+
+      // CALLING EVENTS
+      case "incoming_call":
+        handleIncomingCall(payload);
+        break;
+      case "call_response":
+        onCallResponse(payload);
+        break;
+      case "webrtc_signal":
+        onWebRtcSignal(payload);
+        break;
+      case "ice_candidate":
+        onIceCandidate(payload);
+        break;
+      case "call_end":
+        endCall();
+        break;
+      case "call_error":
+        alert(payload.message);
+        endCall();
         break;
     }
   };
@@ -509,6 +587,19 @@ function attachContextMenu(msgDiv, msgId) {
     document.getElementById("ctx-edit").style.display = isTextMsg ? "flex" : "none";
     contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 180) + "px";
     contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 200) + "px";
+    
+    // Add star/unstar option
+    let starBtn = document.getElementById("ctx-star");
+    if (!starBtn) {
+      starBtn = document.createElement("div");
+      starBtn.id = "ctx-star";
+      starBtn.className = "context-item";
+      contextMenu.prepend(starBtn);
+    }
+    const isStarred = msgDiv.classList.contains("starred-msg-highlight");
+    starBtn.innerHTML = isStarred ? `<i class="ph ph-star-half"></i> Unstar` : `<i class="ph ph-star"></i> Star`;
+    starBtn.onclick = () => toggleStar(msgId, !isStarred);
+
     contextMenu.classList.remove("hidden");
   });
 }
@@ -557,6 +648,67 @@ document.getElementById("delete-cancel-btn")?.addEventListener("click", () => {
   document.getElementById("delete-modal").classList.add("hidden");
 });
 
+async function toggleStar(msgId, starred) {
+  try {
+    const res = await fetchWithAuth(`${REST_URL}/messages/star`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: msgId, starred: starred })
+    });
+    if (res.ok) {
+      showToast(starred ? "Message starred" : "Message unstarred");
+      const el = document.getElementById(`msg-${msgId}`);
+      if (el) {
+        if (starred) el.classList.add("starred-msg-highlight");
+        else el.classList.remove("starred-msg-highlight");
+        
+        // Update meta UI (star icon)
+        const meta = el.querySelector(".message-meta");
+        if (meta) {
+          const starIcon = meta.querySelector(".ph-star");
+          if (starred && !starIcon) {
+            meta.insertAdjacentHTML("afterbegin", `<i class="ph-fill ph-star" style="color:#8696a0; font-size:10px; margin-right:4px;"></i>`);
+          } else if (!starred && starIcon) {
+            starIcon.remove();
+          }
+        }
+      }
+    }
+  } catch (e) { showToast("Failed to update star"); }
+}
+
+const contactContextMenu = document.getElementById("contact-context-menu");
+function showContactContextMenu(e, friend) {
+  contactContextMenu.style.left = Math.min(e.clientX, window.innerWidth - 180) + "px";
+  contactContextMenu.style.top = Math.min(e.clientY, window.innerHeight - 200) + "px";
+  
+  const archiveBtn = document.getElementById("ctx-archive");
+  archiveBtn.innerHTML = friend.is_archived ? `<i class="ph ph-archive-box"></i> Unarchive` : `<i class="ph ph-archive"></i> Archive`;
+  archiveBtn.onclick = () => toggleArchive(friend.id, !friend.is_archived);
+  
+  contactContextMenu.classList.remove("hidden");
+}
+
+async function toggleArchive(friendId, archive) {
+  try {
+    const res = await fetchWithAuth(`${REST_URL}/friends/archive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friend_id: friendId, archive: archive })
+    });
+    if (res.ok) {
+      showToast(archive ? "Chat archived" : "Chat restored");
+      fetchFriends();
+      if (archive && activeChatUser && activeChatUser.id === friendId) {
+        document.getElementById("active-chat").classList.add("hidden");
+        document.getElementById("empty-chat").classList.remove("hidden");
+      }
+    }
+  } catch (e) { showToast("Failed to update archive"); }
+}
+
+document.addEventListener("click", () => contactContextMenu.classList.add("hidden"));
+
 function applyDeletedStyle(msgId, isMe) {
   const el = document.getElementById(`msg-${msgId}`);
   if (!el) return;
@@ -577,10 +729,6 @@ document.getElementById("file-input")?.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file || !activeChatUser) return;
   e.target.value = "";
-  
-  const isImage = file.type.startsWith("image/");
-  const isPDF = file.type === "application/pdf";
-  if (!isImage && !isPDF) { alert("Only images and PDFs are supported."); return; }
   
   const list = document.getElementById("message-list");
   const progressDiv = document.createElement("div");
@@ -660,15 +808,17 @@ globalSearchInput?.addEventListener("input", async () => {
     globalSearchResults.innerHTML = "";
 
     users.forEach(u => {
-      if (u.username === currentUsername) return; // Hide self from search
+      if (u.username === currentUsername) return;
 
       const div = document.createElement("div");
       div.className = "contact-item";
       div.style.padding = "10px";
       
-      const isFriend = u.status === "friend";
-      const btnText = isFriend ? "Friend" : "Add";
-      const btnClass = isFriend ? "secondary" : "primary";
+      let btnText = "Add";
+      let btnDisabled = false;
+      if (u.status === "friend") { btnText = "Friend"; btnDisabled = true; }
+      else if (u.status === "request_sent") { btnText = "Pending"; btnDisabled = true; }
+      else if (u.status === "request_received") { btnText = "Respond"; }
 
       div.innerHTML = `
         <div class="contact-avatar">${u.username.charAt(0).toUpperCase()}</div>
@@ -676,25 +826,83 @@ globalSearchInput?.addEventListener("input", async () => {
           <div class="contact-name">${u.username}</div>
           <div class="contact-bottom" style="font-size:12px;">${u.status_message || ""}</div>
         </div>
-        <button class="auth-btn" style="width: 80px; padding: 6px; font-size: 12px; height: auto;" ${isFriend ? "disabled" : ""}>${btnText}</button>
+        <button class="auth-btn" style="width: 80px; padding: 6px; font-size: 12px; height: auto;" ${btnDisabled ? "disabled" : ""}>${btnText}</button>
       `;
 
       div.querySelector("button").onclick = async () => {
+        if (u.status === "request_received") {
+          addFriendModal.classList.add("hidden");
+          loadPendingRequests();
+          return;
+        }
         try {
           const addRes = await fetchWithAuth(`${REST_URL}/friends/request`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ username: u.username })
           });
           if (addRes.ok) {
-            alert(`Friend added: ${u.username}`);
-            addFriendModal.classList.add("hidden");
-            await fetchFriends();
+            showToast(`Request sent to ${u.username}`);
+            globalSearchInput.value = "";
+            globalSearchResults.innerHTML = "";
           }
-        } catch (e) { console.error("Add friend failed", e); }
+        } catch (e) { showToast("Failed to send request"); }
       };
       globalSearchResults.appendChild(div);
     });
   } catch (e) { console.error("Global search failed", e); }
+});
+
+async function loadPendingRequests() {
+  const list = document.getElementById("pending-requests-list");
+  const section = document.getElementById("pending-requests-section");
+  if (!list) return;
+  
+  try {
+    const res = await fetchWithAuth(`${REST_URL}/friends/requests/received`);
+    const data = await res.json();
+    if (data.length > 0) {
+      section.classList.remove("hidden");
+      list.innerHTML = "";
+      data.forEach(req => {
+        const div = document.createElement("div");
+        div.className = "contact-item";
+        div.style.padding = "10px 0";
+        div.innerHTML = `
+          <div class="contact-info">
+            <div class="contact-name">${req.sender_username}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="auth-btn" style="padding:4px 8px; font-size:12px;" onclick="respondToRequest('${req.request_id}', 'accept')">Accept</button>
+            <button class="auth-btn" style="padding:4px 8px; font-size:12px; background:#54656f;" onclick="respondToRequest('${req.request_id}', 'reject')">Reject</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    } else {
+      section.classList.add("hidden");
+    }
+  } catch (e) { console.error(e); }
+}
+
+async function respondToRequest(reqId, action) {
+  try {
+    const res = await fetchWithAuth(`${REST_URL}/friends/requests/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: reqId, action: action })
+    });
+    if (res.ok) {
+      showToast(action === 'accept' ? "Friend added!" : "Request rejected");
+      loadPendingRequests();
+      fetchFriends();
+    }
+  } catch (e) { showToast("Connection error"); }
+}
+window.respondToRequest = respondToRequest;
+
+document.getElementById("add-friend-btn")?.addEventListener("click", () => {
+  addFriendModal.classList.remove("hidden");
+  loadPendingRequests();
 });
 
 // =========================================================
@@ -754,28 +962,68 @@ function playNotifSound() {
   } catch(e) {}
 }
 
-// =========================================================
-// SETTINGS
-// =========================================================
+const columns = ["chats-column", "settings-column", "status-column", "calls-column", "starred-column", "archived-column"];
 
-function openSettings() {
-  settingsOpen = true;
-  document.getElementById("chats-column").classList.add("hidden");
-  document.getElementById("settings-column").classList.remove("hidden");
+function showColumn(id) {
+  columns.forEach(c => {
+    const el = document.getElementById(c);
+    if (el) {
+      if (c === id) el.classList.remove("hidden");
+      else el.classList.add("hidden");
+    }
+  });
+  
+  // Highlight active nav item
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.classList.remove("active");
+  });
+  
+  const navMap = {
+    "chats-column": "nav-chats",
+    "status-column": "nav-status",
+    "calls-column": "nav-calls",
+    "starred-column": "nav-starred",
+    "archived-column": "nav-archived"
+  };
+  
+  const navId = navMap[id];
+  if (navId) document.getElementById(navId)?.classList.add("active");
+}
+
+document.getElementById("nav-chats")?.addEventListener("click", () => showColumn("chats-column"));
+document.getElementById("nav-status")?.addEventListener("click", () => { showColumn("status-column"); loadStatuses(); });
+document.getElementById("nav-calls")?.addEventListener("click", () => { showColumn("calls-column"); loadCallHistory(); });
+document.getElementById("nav-starred")?.addEventListener("click", () => { showColumn("starred-column"); loadStarredMessages(); });
+document.getElementById("nav-archived")?.addEventListener("click", () => { showColumn("archived-column"); loadArchivedChats(); });
+document.getElementById("settings-btn")?.addEventListener("click", () => {
+  showColumn("settings-column");
   const usernameEl = document.getElementById("settings-username-display");
   const avatarEl = document.getElementById("settings-avatar");
   if (usernameEl && currentUsername) usernameEl.textContent = currentUsername;
   if (avatarEl && currentUsername) avatarEl.textContent = currentUsername.charAt(0).toUpperCase();
-}
+});
 
-function closeSettings() {
-  settingsOpen = false;
-  document.getElementById("settings-column").classList.add("hidden");
-  document.getElementById("chats-column").classList.remove("hidden");
-}
+document.querySelectorAll(".nav-back-btn").forEach(btn => {
+  btn.onclick = () => showColumn("chats-column");
+});
+document.getElementById("settings-back-btn")?.addEventListener("click", () => showColumn("chats-column"));
 
-document.getElementById("settings-btn")?.addEventListener("click", openSettings);
-document.getElementById("settings-back-btn")?.addEventListener("click", closeSettings);
+document.getElementById("upload-status-btn")?.addEventListener("click", async () => {
+  const content = prompt("Enter your status update:");
+  if (!content) return;
+  
+  try {
+    const res = await fetchWithAuth("/api/status/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content, type: "text" })
+    });
+    if (res.ok) {
+      showToast("Status updated!");
+      loadStatuses();
+    }
+  } catch (e) { showToast("Failed to upload status"); }
+});
 
 document.getElementById("setting-dark-mode")?.addEventListener("change", (e) => {
   document.body.classList.toggle("dark-mode", e.target.checked);
@@ -790,6 +1038,160 @@ function loadSavedSettings() {
 }
 
 // =========================================================
+// FEATURE LOADERS
+// =========================================================
+
+async function loadStatuses() {
+  const list = document.getElementById("status-list");
+  if (!list) return;
+  list.innerHTML = `<div class="loading-spinner"></div>`;
+  
+  try {
+    const res = await fetch("/api/status/list", {
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    if (data.length === 0) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">No updates yet</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    data.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "contact-item";
+      div.innerHTML = `
+        <div class="contact-avatar" style="border: 2px solid var(--primary-green);">${item.username.charAt(0).toUpperCase()}</div>
+        <div class="contact-info">
+          <div class="contact-name">${item.username}</div>
+          <div class="contact-last-msg">${item.statuses.length} status updates</div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading status</div>`;
+  }
+}
+
+async function loadCallHistory() {
+  const list = document.getElementById("call-history-list");
+  if (!list) return;
+  list.innerHTML = `<div class="loading-spinner"></div>`;
+  
+  try {
+    const res = await fetch("/api/calls/history", {
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    if (data.length === 0) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">No recent calls</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    data.forEach(call => {
+      const div = document.createElement("div");
+      div.className = "contact-item";
+      const icon = call.direction === 'incoming' ? 'ph-arrow-down-left' : 'ph-arrow-up-right';
+      const color = call.direction === 'incoming' ? '#ea0038' : '#00a884';
+      div.innerHTML = `
+        <div class="contact-avatar">${call.with_username.charAt(0).toUpperCase()}</div>
+        <div class="contact-info">
+          <div class="contact-name">${call.with_username}</div>
+          <div class="contact-last-msg" style="display:flex;align-items:center;gap:4px;">
+            <i class="ph ${icon}" style="color:${color};"></i>
+            ${new Date(call.timestamp).toLocaleString()}
+          </div>
+        </div>
+        <i class="ph ph-phone" style="color:var(--primary-green);font-size:20px;"></i>
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading calls</div>`;
+  }
+}
+
+async function loadStarredMessages() {
+  const list = document.getElementById("starred-messages-list");
+  if (!list) return;
+  list.innerHTML = `<div class="loading-spinner"></div>`;
+  
+  try {
+    const res = await fetch("/api/messages/starred", {
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    if (data.length === 0) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">No starred messages</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    data.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "contact-item";
+      div.innerHTML = `
+        <div class="contact-info">
+          <div class="contact-name">${msg.sender}</div>
+          <div class="contact-last-msg">${msg.text || 'Media message'}</div>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading starred</div>`;
+  }
+}
+
+async function loadArchivedChats() {
+  const list = document.getElementById("archived-list");
+  if (!list) return;
+  list.innerHTML = `<div class="loading-spinner"></div>`;
+  
+  try {
+    const res = await fetch("/api/friends/list?archived=true", {
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    if (data.length === 0) {
+      list.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-secondary);">No archived chats</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    data.forEach(friend => {
+      const div = document.createElement("div");
+      div.className = "contact-item";
+      div.innerHTML = `
+        <div class="contact-avatar">${friend.username.charAt(0).toUpperCase()}</div>
+        <div class="contact-info">
+          <div class="contact-name">${friend.username}</div>
+          <div class="contact-last-msg">Archived</div>
+        </div>
+      `;
+      div.onclick = () => { showColumn("chats-column"); selectContact(friend); };
+      list.appendChild(div);
+    });
+  } catch (e) {
+    list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error loading archived</div>`;
+  }
+}
+
+// Add context menu listeners for starring and archiving
+document.getElementById("ctx-reply")?.addEventListener("click", () => showToast("Reply coming soon"));
+
+document.getElementById("nav-archived")?.addEventListener("click", () => {
+  showToast("Archiving enabled");
+});
+
+document.querySelectorAll(".nav-item").forEach(item => {
+  item.addEventListener("click", () => {
+    if (item.id !== "nav-chats") {
+      document.getElementById("empty-chat").classList.remove("hidden");
+      document.getElementById("active-chat").classList.add("hidden");
+    }
+  });
+});
+
+// =========================================================
 // LOGOUT
 // =========================================================
 
@@ -802,6 +1204,7 @@ function doLogout() {
 }
 
 document.getElementById("logout-btn").addEventListener("click", doLogout);
+document.getElementById("logout-settings-btn")?.addEventListener("click", doLogout);
 
 // =========================================================
 // AUTO-LOGIN
@@ -816,8 +1219,6 @@ window.onload = async () => {
   loadSavedSettings();
 
   if (accessToken && currentUsername) {
-    // We need the password to initialize E2EE keys.
-    // Force re-login on reload to keep everything secure and deterministic.
     document.getElementById("username").value = currentUsername;
     document.getElementById("password").focus();
   }
