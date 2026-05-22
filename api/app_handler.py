@@ -12,18 +12,16 @@ try:
     from app import create_app
     app = create_app()
     
-    # Redefine health at top level to be absolutely sure it's accessible
     @app.route('/api/health')
     def health_check():
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "2.0.5",
-            "service": "SecureChat Backend (Full)"
+            "version": "2.0.6",
+            "service": "SecureChat Backend (Full Production)"
         }), 200
 
 except Exception as e:
-    # Detailed error reporting fallback
     error_trace = traceback.format_exc()
     print(f"CRITICAL: Backend failed to start: {error_trace}")
     
@@ -34,14 +32,7 @@ except Exception as e:
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "2.0.5-failure"
-        }), 500
-    
-    @app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
-    def catch_all_error(path):
-        return jsonify({
-            "error": "Backend Initialization Failed",
-            "details": str(e)
+            "version": "2.0.6-failure"
         }), 500
 
 # Vercel's required entry point

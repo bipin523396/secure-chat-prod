@@ -30,3 +30,5 @@ firebase-key.json
 *.pid
 uploads/
 .venv*/
+.vercel
+.env*.local
