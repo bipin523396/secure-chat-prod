@@ -9,11 +9,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "api/index.py"
+      "destination": "/api/index.py"
     },
     {
-      "source": "/(css|js|images|media)/(.*)",
-      "destination": "/$1/$2"
+      "source": "/css/(.*)",
+      "destination": "/css/$1"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/js/$1"
     },
     {
       "source": "/(.*)",
