@@ -18,7 +18,7 @@ try:
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "2.0.3",
+            "version": "2.0.5",
             "database": db_status
         }), 200
 except Exception as e:
