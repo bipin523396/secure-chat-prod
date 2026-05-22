@@ -1,15 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/handler.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/handler.py": {
+      "runtime": "@vercel/python"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "api/handler.py"
+      "destination": "/api/handler"
     },
     {
       "source": "/(.*)",
