@@ -61,10 +61,6 @@ else:
     except Exception as e:
         print(f"CRITICAL: Firebase could not be initialized. No key found and ADC failed. Error: {e}")
 
-def init_db():
-    """Placeholder to maintain compatibility with __init__.py"""
-    pass
-
 # Global db and bucket objects
 try:
     db = firestore.client()
