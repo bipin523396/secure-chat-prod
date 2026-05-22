@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/main.py",
+      "src": "backend-server/index.py",
       "use": "@vercel/python"
     }
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "api/main.py"
+      "source": "/v2/(.*)",
+      "destination": "backend-server/index.py"
     },
     {
       "source": "/(.*)",
