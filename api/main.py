@@ -1,44 +1,40 @@
-# Production Version 2.0.4 - Explicit Function Runtime
 import os
 import sys
-import traceback
 from flask import Flask, jsonify
 
-# Ensure the 'api' directory is in the path so 'app' can be imported
-sys.path.append(os.path.dirname(__file__))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+# Ensure the 'api' directory and 'app' package are in the path
+api_dir = os.path.dirname(os.path.abspath(__file__))
+if api_dir not in sys.path:
+    sys.path.append(api_dir)
 
 try:
     from app import create_app, db
     app = create_app()
-
+    
+    # Ensure health check is available at the root level for Vercel
     @app.route('/api/health')
-    def health():
+    def health_check():
         db_status = "connected" if db else "disconnected"
         return jsonify({
-            "status": "ok", 
-            "service": "SecureChat Backend", 
+            "status": "ok",
+            "database": db_status,
             "version": "2.0.5",
-            "database": db_status
+            "service": "SecureChat Backend"
         }), 200
+
 except Exception as e:
-    # If app creation fails (e.g. during imports), create a dummy app to report the error
-    error_trace = traceback.format_exc()
-    print(f"CRITICAL ERROR DURING APP INITIALIZATION: {error_trace}")
-    
+    # Fallback app to report errors if initialization fails
     app = Flask(__name__)
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
-    def catch_all(path):
+    @app.route('/api/health')
+    def health_error():
         return jsonify({
-            "error": "Backend Initialization Failed",
+            "status": "error",
             "message": str(e),
-            "traceback": error_trace,
-            "cwd": os.getcwd(),
-            "files_in_cwd": os.listdir('.') if hasattr(os, 'listdir') else []
+            "version": "2.0.5-fallback"
         }), 500
+
+# Vercel searches for 'app' or 'handler'
+handler = app
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
-
-
