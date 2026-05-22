@@ -1,6 +1,6 @@
 const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000/api"
-    : window.location.origin + "/v2";
+    : window.location.origin + "/api";
 // On Vercel, we might need to connect to a different WebSocket server.
 // For now, we use the same host but warn if it's likely to fail.
 const WS_URL = window.location.hostname.includes("vercel.app") 
