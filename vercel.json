@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/handler.py",
+      "src": "api/main.py",
       "use": "@vercel/python"
     }
   ],
   "rewrites": [
     {
-      "source": "/server-api/(.*)",
-      "destination": "server/handler.py"
+      "source": "/api/(.*)",
+      "destination": "api/main.py"
     },
     {
       "source": "/(.*)",
