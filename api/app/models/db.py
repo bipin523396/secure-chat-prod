@@ -16,12 +16,10 @@ cred = None
 
 if service_account_json:
     import json
-    import tempfile
-    # Vercel doesn't like local file paths for certs, but we can pass the dict
     try:
         service_account_info = json.loads(service_account_json)
         cred = credentials.Certificate(service_account_info)
-        print("Firebase Admin SDK initialized using environment JSON")
+        print("Firebase Admin SDK initialized using FIREBASE_SERVICE_ACCOUNT_JSON environment variable.")
     except Exception as e:
         print(f"Error parsing FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
 
@@ -62,6 +60,10 @@ else:
         print("Firebase Admin SDK initialized using default credentials")
     except Exception as e:
         print(f"CRITICAL: Firebase could not be initialized. No key found and ADC failed. Error: {e}")
+
+def init_db():
+    """Placeholder to maintain compatibility with __init__.py"""
+    pass
 
 # Global db and bucket objects
 try:

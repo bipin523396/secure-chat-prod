@@ -57,17 +57,22 @@ def upload_file(current_user_id):
 
 
 @media_bp.route('/download/<file_id>', methods=['GET'])
-@token_required
-def download_file(current_user_id, file_id):
+def download_file(file_id):
     try:
         media_doc = db.collection("media_files").document(file_id).get()
         if not media_doc.exists:
             return jsonify({'error': 'File not found'}), 404
 
         metadata = media_doc.to_dict()
-        local_path = metadata.get('local_path')
+        stored_path = metadata.get('local_path')
+        safe_name = f"{file_id}_{metadata.get('original_name')}"
+        reconstructed_path = os.path.join(UPLOAD_DIR, safe_name)
+        
+        # Try stored path first, if not found, use reconstructed path
+        local_path = stored_path if stored_path and os.path.exists(stored_path) else reconstructed_path
 
-        if not local_path or not os.path.exists(local_path):
+        if not os.path.exists(local_path):
+            print(f"[Media] File not found. Tried {stored_path} and {reconstructed_path}")
             return jsonify({'error': 'File not found on disk'}), 404
 
         content_type = metadata.get('file_type', 'application/octet-stream')

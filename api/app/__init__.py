@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from app.models.db import init_db
 from app.routes.auth import auth_bp
@@ -29,6 +29,10 @@ def create_app():
     app.register_blueprint(status_bp, url_prefix='/api/status')
     app.register_blueprint(messages_bp, url_prefix='/api/messages')
     app.register_blueprint(calls_bp, url_prefix='/api/calls')
+    
+    @app.route('/api/health')
+    def health():
+        return jsonify({"status": "ok", "service": "SecureChat Backend"}), 200
     
     @app.route('/')
     def index():

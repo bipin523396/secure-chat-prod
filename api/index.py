@@ -5,6 +5,7 @@ from flask import Flask, jsonify
 
 # Ensure the 'api' directory is in the path so 'app' can be imported
 sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
 try:
     from app import create_app

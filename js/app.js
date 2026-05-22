@@ -1,8 +1,10 @@
-const REST_URL = "/api";
+const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000/api"
+    : "/api";
 // On Vercel, we might need to connect to a different WebSocket server.
 // For now, we use the same host but warn if it's likely to fail.
 const WS_URL = window.location.hostname.includes("vercel.app") 
-    ? `wss://your-java-server.onrender.com` // Placeholder for user to update
+    ? `wss://secure-chat-java-server.onrender.com` // You should update this after deploying Java server
     : `ws://${window.location.hostname}:5001`;
 
 if (window.location.hostname.includes("vercel.app")) {
@@ -66,8 +68,18 @@ document.getElementById("login-btn").addEventListener("click", async () => {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: u, password: p, identity_hash: myIdentity })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    
+    let data;
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      console.error("Server returned non-JSON response:", text);
+      throw new Error(`Server Error: ${res.status}. Please check Vercel logs.`);
+    }
+
+    if (!res.ok) throw new Error(data.error || "Login failed");
 
     accessToken = data.access_token;
     refreshToken = data.refresh_token;
@@ -99,8 +111,18 @@ document.getElementById("register-btn").addEventListener("click", async () => {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: u, password: p, identity_hash: identity })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    
+    let data;
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      console.error("Server returned non-JSON response:", text);
+      throw new Error(`Server Error: ${res.status}. Please check Vercel logs.`);
+    }
+
+    if (!res.ok) throw new Error(data.error || "Registration failed");
     showError("Registration successful. Please login.", true);
   } catch (e) { showError(e.message); }
 });
@@ -1055,7 +1077,7 @@ async function loadStatuses() {
   list.innerHTML = `<div class="loading-spinner"></div>`;
   
   try {
-    const res = await fetch("/api/status/list", {
+    const res = await fetch(`${REST_URL}/status/list`, {
       headers: { "Authorization": `Bearer ${accessToken}` }
     });
     const data = await res.json();
@@ -1087,7 +1109,7 @@ async function loadCallHistory() {
   list.innerHTML = `<div class="loading-spinner"></div>`;
   
   try {
-    const res = await fetch("/api/calls/history", {
+    const res = await fetch(`${REST_URL}/calls/history`, {
       headers: { "Authorization": `Bearer ${accessToken}` }
     });
     const data = await res.json();
@@ -1125,7 +1147,7 @@ async function loadStarredMessages() {
   list.innerHTML = `<div class="loading-spinner"></div>`;
   
   try {
-    const res = await fetch("/api/messages/starred", {
+    const res = await fetch(`${REST_URL}/messages/starred`, {
       headers: { "Authorization": `Bearer ${accessToken}` }
     });
     const data = await res.json();
@@ -1156,7 +1178,7 @@ async function loadArchivedChats() {
   list.innerHTML = `<div class="loading-spinner"></div>`;
   
   try {
-    const res = await fetch("/api/friends/list?archived=true", {
+    const res = await fetch(`${REST_URL}/friends/list?archived=true`, {
       headers: { "Authorization": `Bearer ${accessToken}` }
     });
     const data = await res.json();
