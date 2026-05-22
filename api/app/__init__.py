@@ -32,7 +32,13 @@ def create_app():
     
     @app.route('/api/health')
     def health():
-        return jsonify({"status": "ok", "service": "SecureChat Backend", "version": "2.0.1"}), 200
+        db_status = "connected" if db else "disconnected"
+        return jsonify({
+            "status": "ok", 
+            "service": "SecureChat Backend", 
+            "version": "2.0.2",
+            "database": db_status
+        }), 200
     
     @app.route('/api/v2/test')
     def test_v2():
