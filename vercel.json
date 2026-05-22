@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/app_handler.py",
+      "src": "server/app_handler.py",
       "use": "@vercel/python"
     },
     {
@@ -13,7 +13,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/app_handler.py"
+      "destination": "/server/app_handler.py"
     },
     {
       "source": "/(.*)",
