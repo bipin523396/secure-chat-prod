@@ -12,13 +12,13 @@ try:
     from app import create_app
     app = create_app()
     
-    @app.route('/api/status_check')
-    def status_check():
+    @app.route('/api/health')
+    def health_check():
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "2.1.0",
-            "service": "SecureChat Final Test"
+            "version": "2.1.1",
+            "service": "SecureChat Final Recovery"
         }), 200
 
 except Exception as e:
