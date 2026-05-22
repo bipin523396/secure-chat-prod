@@ -8,8 +8,18 @@ sys.path.append(os.path.dirname(__file__))
 sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
 
 try:
-    from app import create_app
+    from app import create_app, db
     app = create_app()
+
+    @app.route('/api/health')
+    def health():
+        db_status = "connected" if db else "disconnected"
+        return jsonify({
+            "status": "ok", 
+            "service": "SecureChat Backend", 
+            "version": "2.0.3",
+            "database": db_status
+        }), 200
 except Exception as e:
     # If app creation fails (e.g. during imports), create a dummy app to report the error
     error_trace = traceback.format_exc()
