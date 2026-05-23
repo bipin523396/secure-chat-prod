@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from backend_app.models.db import init_db, db
 from backend_app.routes.auth import auth_bp
@@ -12,9 +12,26 @@ import os
 
 def create_app():
     app = Flask(__name__)
-    
-    # Configure CORS to allow all for API routes
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "*"}},
+        supports_credentials=False,
+        allow_headers=["Authorization", "Content-Type"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
+
+    @app.before_request
+    def handle_preflight():
+        if request.method != "OPTIONS":
+            return None
+        response = make_response("", 204)
+        origin = request.headers.get("Origin", "*")
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
     
     # Initialize DB indexes
     init_db()
@@ -32,7 +49,7 @@ def create_app():
         return jsonify({
             "status": "success",
             "message": "SecureChat backend running",
-            "version": "4.0.26"
+            "version": "4.0.27"
         }), 200
 
     @app.route('/api/health')
@@ -41,7 +58,7 @@ def create_app():
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.26",
+            "version": "4.0.27",
             "database": db_status
         }), 200
     

@@ -1,8 +1,10 @@
-const VERSION = "4.0.26";
+const VERSION = "4.0.27";
 console.log(`[APP] Version: ${VERSION}`);
-const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+// Use same-origin API on Vercel (serverless Flask) to avoid CORS; Render is fallback for other hosts
+const REST_URL = IS_LOCAL
     ? "http://localhost:8000/api"
-    : "https://secure-chat-prod.onrender.com/api";
+    : `${window.location.origin}/api`;
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`

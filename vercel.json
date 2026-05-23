@@ -1,13 +1,18 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/favicon.ico",
       "destination": "/favicon.svg"
     },
     {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
     }
   ]
 }
