@@ -1,7 +1,8 @@
-const VERSION = "4.0.27";
+const VERSION = "4.0.28";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const REST_URL = IS_LOCAL
+const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
+const REST_URL = USE_LOCAL_API
     ? "http://localhost:8000/api"
     : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
@@ -98,13 +99,9 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     localStorage.setItem("chat_access_token", accessToken);
     localStorage.setItem("chat_refresh_token", refreshToken);
     localStorage.setItem("chat_username", currentUsername);
+    sessionStorage.setItem("chat_password", p);
 
-    await fetchFriends();
-    connectSocket(); // Re-enabled with correct Java WS URL
-    
-    authContainer.classList.add("hidden");
-    chatContainer.classList.remove("hidden");
-    if (!activeChatUser) openChat({ username: currentUsername, is_online: true });
+    await enterChatUI();
   } catch (e) { 
     console.error("FETCH ERROR:", e);
     showError(e.message); 
@@ -141,6 +138,31 @@ document.getElementById("register-btn").addEventListener("click", async () => {
 // =========================================================
 // FRIENDS & UI
 // =========================================================
+
+async function initCryptoFromPassword(password) {
+  if (!currentUsername || !password) return false;
+  currentPassword = password;
+  myIdentity = await derivePublicIdentity(currentUsername, currentPassword);
+  mySeed = await getPersistentKeyPair(currentUsername, currentPassword);
+  return true;
+}
+
+async function enterChatUI({ skipFetch = false } = {}) {
+  authContainer.classList.add("hidden");
+  chatContainer.classList.remove("hidden");
+  if (skipFetch) renderFriends();
+  else await fetchFriends();
+  connectSocket();
+  const lastChat = sessionStorage.getItem("chat_active_user");
+  if (lastChat) {
+    const friend =
+      friendsList.find((f) => f.username === lastChat) ||
+      { username: lastChat, is_online: false };
+    await openChat(friend);
+  } else if (!activeChatUser) {
+    openChat({ username: currentUsername, is_online: true });
+  }
+}
 
 async function fetchFriends() {
   try {
@@ -215,6 +237,7 @@ function renderFriends() {
 
 async function openChat(friend) {
   activeChatUser = friend;
+  sessionStorage.setItem("chat_active_user", friend.username);
 
   unreadCounts[friend.username] = 0;
   updateTotalUnreadBadge();
@@ -1070,6 +1093,9 @@ document.getElementById("add-friend-btn")?.addEventListener("click", () => {
 async function fetchWithAuth(url, options = {}) {
   console.log(`[API] fetchWithAuth calling: ${url}`);
   options.headers = options.headers || {};
+  if (options.body && !options.headers["Content-Type"]) {
+    options.headers["Content-Type"] = "application/json";
+  }
   options.headers["Authorization"] = `Bearer ${accessToken}`;
   let res = await fetch(url, options);
   if (res.status === 401) {
@@ -1360,6 +1386,8 @@ function doLogout() {
   localStorage.removeItem("chat_access_token");
   localStorage.removeItem("chat_refresh_token");
   localStorage.removeItem("chat_username");
+  sessionStorage.removeItem("chat_password");
+  sessionStorage.removeItem("chat_active_user");
   location.reload();
 }
 
@@ -1367,19 +1395,41 @@ document.getElementById("logout-btn").addEventListener("click", doLogout);
 document.getElementById("logout-settings-btn")?.addEventListener("click", doLogout);
 
 // =========================================================
-// AUTO-LOGIN
+// SESSION RESTORE (survives page refresh)
 // =========================================================
 
-window.onload = async () => {
+async function restoreSession() {
   accessToken = localStorage.getItem("chat_access_token");
   refreshToken = localStorage.getItem("chat_refresh_token");
   const storedUser = localStorage.getItem("chat_username");
   currentUsername = storedUser && storedUser !== "null" ? String(storedUser).trim() : null;
+  const storedPassword = sessionStorage.getItem("chat_password");
 
   loadSavedSettings();
 
-  if (accessToken && currentUsername) {
+  if (currentUsername) {
     document.getElementById("username").value = currentUsername;
-    document.getElementById("password").focus();
   }
-};
+
+  if (!accessToken || !currentUsername) return;
+
+  try {
+    if (storedPassword) {
+      await initCryptoFromPassword(storedPassword);
+    }
+
+    const res = await fetchWithAuth(`${REST_URL}/friends/list`);
+    if (!res.ok) {
+      console.warn("[SESSION] Token invalid, staying on login");
+      return;
+    }
+
+    friendsList = await res.json();
+    await enterChatUI({ skipFetch: true });
+    console.log("[SESSION] Restored logged-in state");
+  } catch (e) {
+    console.error("[SESSION] Restore failed:", e);
+  }
+}
+
+window.onload = restoreSession;

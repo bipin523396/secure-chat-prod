@@ -2,8 +2,47 @@ from flask import Blueprint, request, jsonify
 from backend_app.models.db import db
 from backend_app.utils.jwt_utils import token_required
 import datetime
+import traceback
 
 messages_bp = Blueprint('messages', __name__)
+
+UTC = datetime.timezone.utc
+
+
+def _parse_iso_datetime(value):
+    """Safely parse ISO-8601 / Firestore timestamps; returns UTC-aware datetime or None."""
+    if value is None:
+        return None
+    if isinstance(value, datetime.datetime):
+        dt = value
+    elif isinstance(value, (int, float)):
+        ts = value / 1000.0 if value > 1e12 else value
+        dt = datetime.datetime.fromtimestamp(ts, tz=UTC)
+    elif isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return None
+        try:
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            dt = datetime.datetime.fromisoformat(s)
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
+def _parse_since(since):
+    """Validate ?since= query param (e.g. 2026-05-23T14:31:38.582Z)."""
+    if since is None:
+        return None
+    if isinstance(since, str) and not since.strip():
+        return None
+    return _parse_iso_datetime(since)
 
 
 def _chat_id(username_a, username_b):
@@ -14,10 +53,13 @@ def _serialize_message(doc):
     d = doc.to_dict()
     d['_id'] = doc.id
     ts = d.get('timestamp')
-    if hasattr(ts, 'isoformat'):
-        d['timestamp'] = ts.isoformat()
-    elif isinstance(ts, (int, float)):
-        d['timestamp'] = datetime.datetime.utcfromtimestamp(ts / 1000.0).isoformat()
+    parsed = _parse_iso_datetime(ts)
+    if parsed is not None:
+        d['timestamp'] = parsed.isoformat().replace('+00:00', 'Z')
+    elif ts is not None:
+        d['timestamp'] = str(ts)
+    else:
+        d['timestamp'] = ''
     return d
 
 
@@ -38,24 +80,19 @@ def _fetch_conversation_messages(my_username, partner_username, since=None):
                 by_id[doc.id] = _serialize_message(doc)
 
     results = list(by_id.values())
-    if since:
-        try:
-            since_dt = datetime.datetime.fromisoformat(since.replace('Z', '+00:00'))
-        except ValueError:
-            since_dt = None
-        if since_dt:
-            filtered = []
-            for m in results:
-                try:
-                    m_dt = datetime.datetime.fromisoformat(m['timestamp'].replace('Z', '+00:00'))
-                except ValueError:
-                    filtered.append(m)
-                    continue
-                if m_dt > since_dt:
-                    filtered.append(m)
-            results = filtered
+    since_dt = _parse_since(since)
+    if since_dt is not None:
+        filtered = []
+        for m in results:
+            m_dt = _parse_iso_datetime(m.get('timestamp'))
+            if m_dt is None:
+                filtered.append(m)
+                continue
+            if m_dt > since_dt:
+                filtered.append(m)
+        results = filtered
 
-    results.sort(key=lambda x: x.get('timestamp', ''))
+    results.sort(key=lambda x: x.get('timestamp') or '')
     return results[-100:]
 
 
@@ -118,17 +155,25 @@ def send_message_rest(current_user_id):
 @messages_bp.route('/history', methods=['GET'])
 @token_required
 def get_chat_history(current_user_id):
-    partner_username = request.args.get('withUser')
-    since = request.args.get('since')
-    if not partner_username:
-        return jsonify({'error': 'Missing withUser'}), 400
+    try:
+        partner_username = request.args.get('withUser')
+        since = request.args.get('since')
+        if not partner_username:
+            return jsonify({'error': 'Missing withUser'}), 400
 
-    me_doc = db.collection("users").document(current_user_id).get()
-    if not me_doc.exists:
-        return jsonify({'error': 'User not found'}), 404
-    my_username = me_doc.to_dict()['username']
+        me_doc = db.collection("users").document(current_user_id).get()
+        if not me_doc.exists:
+            return jsonify({'error': 'User not found'}), 404
+        my_username = me_doc.to_dict()['username']
 
-    return jsonify(_fetch_conversation_messages(my_username, partner_username, since=since)), 200
+        messages = _fetch_conversation_messages(
+            my_username, partner_username, since=since
+        )
+        return jsonify(messages), 200
+    except Exception as error:
+        print('History route error:', error)
+        traceback.print_exc()
+        return jsonify({'error': str(error)}), 500
 
 
 @messages_bp.route('/star', methods=['POST'])
