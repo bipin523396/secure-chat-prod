@@ -1,13 +1,5 @@
 {
-  "version": 2,
   "rewrites": [
-    {
-      "source": "/v3-api/(.*)",
-      "destination": "api/index.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "public/$1"
-    }
+    { "source": "/v3-api/(.*)", "destination": "/api/main.py" }
   ]
 }
