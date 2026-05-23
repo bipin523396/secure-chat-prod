@@ -11,16 +11,6 @@ if backend_dir not in sys.path:
 try:
     from app import create_app
     app = create_app()
-    
-    @app.route('/api-v7/health')
-    def health_check():
-        return jsonify({
-            "status": "ok",
-            "database": "connected",
-            "version": "3.7.0",
-            "service": "SecureChat Production v7"
-        }), 200
-
 except Exception as e:
     error_trace = traceback.format_exc()
     print(f"CRITICAL: Backend failed to start: {error_trace}")
@@ -32,7 +22,7 @@ except Exception as e:
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "3.7.0-failure"
+            "version": "3.7.4-failure"
         }), 500
 
 # Vercel's required entry point

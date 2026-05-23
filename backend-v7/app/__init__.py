@@ -11,10 +11,7 @@ from app.routes.calls import calls_bp
 import os
 
 def create_app():
-    # Files moved back to api/app for better Vercel support
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    static_dir = base_dir
-    app = Flask(__name__, static_folder=static_dir, static_url_path='')
+    app = Flask(__name__)
     
     # Configure CORS to allow all for API routes
     CORS(app, resources={r"/api-v7/*": {"origins": "*"}})
@@ -36,28 +33,10 @@ def create_app():
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "2.0.2",
+            "version": "3.7.4",
             "database": db_status
         }), 200
     
-    @app.route('/api/v2/test')
-    def test_v2():
-        return jsonify({"message": "Vercel Backend is Live", "timestamp": os.getenv('VERCEL_DEPLOYMENT_ID', 'local')}), 200
-    
-    @app.route('/')
-    def index():
-        try:
-            return app.send_static_file('index.html')
-        except:
-            return "SecureChat Backend is running. Frontend might not be bundled correctly in this environment.", 200
-        
-    @app.route('/<path:path>')
-    def static_files(path):
-        try:
-            return app.send_static_file(path)
-        except:
-            return "File not found", 404
-
     @app.errorhandler(Exception)
     def handle_exception(e):
         # Pass through HTTP errors
