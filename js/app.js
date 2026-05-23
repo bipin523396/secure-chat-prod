@@ -1037,7 +1037,7 @@ document.getElementById("upload-status-btn")?.addEventListener("click", async ()
   if (!content) return;
   
   try {
-    const res = await fetchWithAuth("/api/status/upload", {
+    const res = await fetchWithAuth(`${REST_URL}/status/upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: content, type: "text" })
