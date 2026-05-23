@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from app.models.db import init_db
+from app.models.db import init_db, db
 from app.routes.auth import auth_bp
 from app.routes.friends import friends_bp
 from app.routes.media import media_bp
