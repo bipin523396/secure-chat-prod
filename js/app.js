@@ -1,4 +1,4 @@
-const VERSION = "4.0.33";
+const VERSION = "4.0.34";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
