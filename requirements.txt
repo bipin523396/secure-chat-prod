@@ -8,4 +8,5 @@ firebase-admin==6.4.0
 google-cloud-firestore>=2.14.0
 google-cloud-storage>=2.14.0
 cryptography>=42.0.0
+gunicorn==21.2.0
 
