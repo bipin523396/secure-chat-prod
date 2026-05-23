@@ -41,7 +41,7 @@ def create_app():
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.8",
+            "version": "4.0.22",
             "database": db_status
         }), 200
     
