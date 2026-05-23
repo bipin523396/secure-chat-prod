@@ -1,6 +1,6 @@
 const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:8000/api"
-    : window.location.origin + "/api";
+    ? "http://localhost:8000/prod-api"
+    : window.location.origin + "/prod-api";
 // WebSocket Configuration
 // On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
