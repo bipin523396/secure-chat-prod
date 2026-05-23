@@ -14,12 +14,20 @@ try:
     app = create_app()
     CORS(app)
     
+    @app.route("/")
+    def home():
+        return jsonify({
+            "status": "success",
+            "message": "SecureChat backend running",
+            "version": "4.0.3"
+        }), 200
+
     @app.route('/api/health')
     def health_check():
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "4.0.2",
+            "version": "4.0.3",
             "service": "SecureChat Standard Production"
         }), 200
 
