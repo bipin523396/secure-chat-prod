@@ -1,10 +1,13 @@
 const VERSION = "4.0.27";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-// Use same-origin API on Vercel (serverless Flask) to avoid CORS; Render is fallback for other hosts
+const ON_VERCEL = /\.vercel\.app$/i.test(window.location.hostname);
+// Same-origin API on Vercel when serverless is deployed; otherwise Render (must be redeployed from GitHub main)
 const REST_URL = IS_LOCAL
     ? "http://localhost:8000/api"
-    : `${window.location.origin}/api`;
+    : ON_VERCEL
+      ? `${window.location.origin}/api`
+      : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
