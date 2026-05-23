@@ -1,4 +1,4 @@
-const REST_URL = "https://secure-chat-prod.onrender.com/v8-api";
+const REST_URL = "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 // WebSocket Configuration
 // On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).

@@ -14,34 +14,34 @@ def create_app():
     app = Flask(__name__)
     
     # Configure CORS to allow all for API routes
-    CORS(app, resources={r"/v8-api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
     
     # Initialize DB indexes
     init_db()
     
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix='/v8-api')
-    app.register_blueprint(friends_bp, url_prefix='/v8-api/friends')
-    app.register_blueprint(media_bp, url_prefix='/v8-api/media')
-    app.register_blueprint(status_bp, url_prefix='/v8-api/status')
-    app.register_blueprint(messages_bp, url_prefix='/v8-api/messages')
-    app.register_blueprint(calls_bp, url_prefix='/v8-api/calls')
+    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(friends_bp, url_prefix='/api/friends')
+    app.register_blueprint(media_bp, url_prefix='/api/media')
+    app.register_blueprint(status_bp, url_prefix='/api/status')
+    app.register_blueprint(messages_bp, url_prefix='/api/messages')
+    app.register_blueprint(calls_bp, url_prefix='/api/calls')
     
     @app.route('/')
     def home():
         return jsonify({
             "status": "success",
             "message": "SecureChat backend running",
-            "version": "4.0.7"
+            "version": "4.0.8"
         }), 200
 
-    @app.route('/v8-api/health')
+    @app.route('/api/health')
     def health():
         db_status = "connected" if db else "disconnected"
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.7",
+            "version": "4.0.8",
             "database": db_status
         }), 200
     

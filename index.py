@@ -13,14 +13,14 @@ except Exception as e:
     print(f"CRITICAL: Backend failed to start: {error_trace}")
     
     app = Flask(__name__)
-    @app.route('/v8-api/health')
+    @app.route('/api/health')
     @app.route('/')
     def health_error():
         return jsonify({
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "4.0.7-failure"
+            "version": "4.0.8-failure"
         }), 500
 
 # Vercel/Render entry point
