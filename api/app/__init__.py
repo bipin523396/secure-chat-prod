@@ -23,7 +23,7 @@ def create_app():
     init_db()
     
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(friends_bp, url_prefix='/api/friends')
     app.register_blueprint(media_bp, url_prefix='/api/media')
     app.register_blueprint(status_bp, url_prefix='/api/status')

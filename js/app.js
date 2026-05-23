@@ -60,7 +60,7 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 
   try {
     myIdentity = await derivePublicIdentity(u, p);
-    const res = await fetch(`${REST_URL}/auth/login`, {
+    const res = await fetch(`${REST_URL}/login`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: u, password: p, identity_hash: myIdentity })
     });
@@ -103,7 +103,7 @@ document.getElementById("register-btn").addEventListener("click", async () => {
 
   try {
     const identity = await derivePublicIdentity(u, p);
-    const res = await fetch(`${REST_URL}/auth/register`, {
+    const res = await fetch(`${REST_URL}/register`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: u, password: p, identity_hash: identity })
     });
@@ -953,7 +953,7 @@ async function fetchWithAuth(url, options = {}) {
 
 async function refreshTokenFunc() {
   try {
-    const res = await fetch(`${REST_URL}/auth/refresh`, {
+    const res = await fetch(`${REST_URL}/refresh`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken })
     });
