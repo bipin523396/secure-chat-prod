@@ -1,18 +1,9 @@
 {
   "version": 2,
-  "functions": {
-    "api/server_v4.py": {
-      "runtime": "@vercel/python"
-    }
-  },
   "rewrites": [
     {
-      "source": "/v4-api/(.*)",
-      "destination": "api/server_v4.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
     }
   ]
 }
