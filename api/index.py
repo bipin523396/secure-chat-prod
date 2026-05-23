@@ -1,7 +1,7 @@
 import os
 import sys
 import traceback
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 # app is now in the root, so this should work directly
 try:
@@ -13,9 +13,19 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.0.2",
+            "version": "3.0.3",
+            "path_seen": request.path,
             "service": "SecureChat Production v3"
         }), 200
+
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def catch_all(path):
+        return jsonify({
+            "error": "Route not found in Flask",
+            "path": path,
+            "full_path": request.path
+        }), 404
 
 except Exception as e:
     error_trace = traceback.format_exc()
