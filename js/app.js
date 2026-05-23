@@ -1,15 +1,11 @@
-const VERSION = "4.0.32";
+const VERSION = "4.0.33";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
-const ON_VERCEL =
-  window.location.hostname.endsWith(".vercel.app") ||
-  window.location.hostname.includes("vercel.app");
+// API runs on Render (Firebase env). Vercel hosts static UI only.
 const REST_URL = USE_LOCAL_API
     ? "http://localhost:8000/api"
-    : ON_VERCEL
-      ? `${window.location.origin}/api`
-      : "https://secure-chat-prod.onrender.com/api";
+    : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
@@ -66,12 +62,17 @@ function showToast(msg) {
 // AUTH
 // =========================================================
 
+let loginInProgress = false;
+
 document.getElementById("login-btn").addEventListener("click", async () => {
+  if (loginInProgress) return;
   const u = document.getElementById("username").value.trim();
   const p = document.getElementById("password").value.trim();
   if (!u || !p) return showError("Enter username and password");
 
-  console.log("LOGIN BUTTON CLICKED");
+  const loginBtn = document.getElementById("login-btn");
+  loginInProgress = true;
+  loginBtn.disabled = true;
 
   try {
     myIdentity = await derivePublicIdentity(u, p);
@@ -91,10 +92,12 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     } else {
       const text = await res.text();
       console.error("Server returned non-JSON response:", text);
-      throw new Error(`Server Error: ${res.status}. Please check Vercel logs.`);
+      throw new Error(
+        res.status >= 500
+          ? "Server is waking up or unavailable. Wait 30s and try once."
+          : `Server error (${res.status}).`
+      );
     }
-
-    console.log("SERVER RESPONSE:", data);
 
     if (!res.ok) throw new Error(data.error || "Login failed");
 
@@ -114,6 +117,9 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   } catch (e) { 
     console.error("FETCH ERROR:", e);
     showError(e.message); 
+  } finally {
+    loginInProgress = false;
+    loginBtn.disabled = false;
   }
 });
 
