@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: secure-chat-prod
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn index:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: JWT_SECRET
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: FIREBASE_STORAGE_BUCKET
+        value: telemedicine-a28a0.firebasestorage.app
+
+  - type: web
+    name: secure-chat-java-server
+    runtime: docker
+    dockerfilePath: ./server-java/Dockerfile
+    envVars:
+      - key: JWT_SECRET
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: PORT
+        value: "5001"

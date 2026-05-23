@@ -317,6 +317,45 @@ public class ChatServer extends WebSocketServer {
     private void handleSendMessage(String sender, WebSocket conn, JSONObject payload) {
         try {
             String receiver = payload.getString("receiver");
+
+            // Message already saved via Python REST API — relay only
+            if (payload.has("_id")) {
+                String msgId = payload.getString("_id");
+                JSONObject rxPayload = new JSONObject();
+                rxPayload.put("_id", msgId);
+                rxPayload.put("sender", sender);
+                rxPayload.put("receiver", receiver);
+                if (payload.has("timestamp")) rxPayload.put("timestamp", payload.get("timestamp"));
+                if (payload.has("file_id")) {
+                    rxPayload.put("file_id", payload.getString("file_id"));
+                    rxPayload.put("file_name", payload.getString("file_name"));
+                    rxPayload.put("file_type", payload.getString("file_type"));
+                } else {
+                    rxPayload.put("ciphertext", payload.get("ciphertext"));
+                    rxPayload.put("iv", payload.get("iv"));
+                }
+                rxPayload.put("deleted", false);
+                rxPayload.put("edited", false);
+                rxPayload.put("status", "delivered");
+
+                WebSocket receiverConn = activeUsers.get(receiver);
+                if (receiverConn != null) {
+                    messagesCollection.document(msgId).update("status", "delivered");
+                    JSONObject rxMsg = new JSONObject();
+                    rxMsg.put("type", "receive_message");
+                    rxMsg.put("payload", rxPayload);
+                    receiverConn.send(rxMsg.toString());
+
+                    JSONObject receipt = new JSONObject();
+                    receipt.put("type", "delivery_receipt");
+                    JSONObject dPayload = new JSONObject();
+                    dPayload.put("message_id", msgId);
+                    receipt.put("payload", dPayload);
+                    conn.send(receipt.toString());
+                }
+                return;
+            }
+
             long timestamp = System.currentTimeMillis();
             boolean isFileMessage = payload.has("file_id");
 

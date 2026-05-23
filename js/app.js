@@ -1,16 +1,16 @@
-const VERSION = "4.0.24";
+const VERSION = "4.0.26";
 console.log(`[APP] Version: ${VERSION}`);
 const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:8000/api"
     : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
-// WebSocket Configuration
-// On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
-    : `wss://secure-chat-java-server.onrender.com/ws`;
+    : "wss://secure-chat-java-server.onrender.com";
 
 let socket = null;
+let messagePollTimer = null;
+let lastHistoryFetchAt = null;
 let currentUsername = null;
 let currentPassword = null; // Kept in memory to derive keys
 let accessToken = null;
@@ -225,22 +225,26 @@ async function openChat(friend) {
   updatePresenceUI(friend.username, friend.is_online, friend.last_seen);
   document.getElementById("message-list").innerHTML = "";
 
-  // 1. Load history from Firestore via REST API (PERSISTENCE)
+  lastHistoryFetchAt = new Date().toISOString();
+
   try {
-    const res = await fetchWithAuth(`${REST_URL}/messages/history?withUser=${friend.username}`);
+    const res = await fetchWithAuth(`${REST_URL}/messages/history?withUser=${encodeURIComponent(friend.username)}`);
     const msgs = await res.json();
-    if (res.ok && msgs) {
+    if (res.ok && Array.isArray(msgs)) {
       for (const m of msgs) await appendMessage(m);
+    } else if (!res.ok) {
+      console.warn("[REST] History error:", msgs);
+      showToast(msgs.error || "Could not load chat history");
     }
   } catch (err) {
     console.warn("[REST] Failed to load chat history:", err);
   }
 
-  // 2. Fallback or Sync with WebSocket (REALTIME)
   if (socket && socket.readyState === WebSocket.OPEN) {
     wsSend("mark_read", { sender: friend.username });
   }
 
+  startMessagePolling();
   renderFriends();
 }
 
@@ -374,6 +378,7 @@ async function getSharedKey(targetUser) {
 async function appendMessage(data, preDecrypted = null) {
   const list = document.getElementById("message-list");
   if (!list) return;
+  if (data._id && document.getElementById(`msg-${data._id}`)) return;
 
   const isMe = String(data.sender).trim().toLowerCase() === String(currentUsername).trim().toLowerCase();
   const isFile = !!data.file_id;
@@ -503,19 +508,27 @@ function buildMeta(data, isMe) {
 // =========================================================
 
 function connectSocket() {
+  if (!accessToken) return;
   if (socket) socket.close();
-  socket = new WebSocket(`${WS_URL}?token=${accessToken}`);
+  socket = new WebSocket(`${WS_URL}?token=${encodeURIComponent(accessToken)}`);
 
   socket.onopen = () => {
     console.log("[WS] Connected");
-    // History is now loaded via REST in openChat, so we only sync unread status here
+    stopMessagePolling();
+    updateConnectionStatus(true);
     if (activeChatUser) {
       wsSend("mark_read", { sender: activeChatUser.username });
     }
   };
+  socket.onerror = () => {
+    updateConnectionStatus(false);
+    startMessagePolling();
+  };
   socket.onclose = () => {
     console.log("[WS] Disconnected. Reconnecting...");
-    setTimeout(connectSocket, 3000);
+    updateConnectionStatus(false);
+    startMessagePolling();
+    setTimeout(connectSocket, 5000);
   };
 
   socket.onmessage = async (event) => {
@@ -633,10 +646,63 @@ function connectSocket() {
   };
 }
 
+function updateConnectionStatus(connected) {
+  const statusEl = document.getElementById("chat-with-status");
+  if (!statusEl || !activeChatUser) return;
+  if (connected) {
+    updatePresenceUI(activeChatUser.username, activeChatUser.is_online, activeChatUser.last_seen);
+  } else if (activeChatUser.username !== currentUsername) {
+    statusEl.textContent = "syncing via server…";
+  }
+}
+
+function startMessagePolling() {
+  if (messagePollTimer) return;
+  messagePollTimer = setInterval(pollActiveChat, 4000);
+}
+
+function stopMessagePolling() {
+  if (messagePollTimer) {
+    clearInterval(messagePollTimer);
+    messagePollTimer = null;
+  }
+}
+
+async function pollActiveChat() {
+  if (!activeChatUser || activeChatUser.username === currentUsername) return;
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    stopMessagePolling();
+    return;
+  }
+
+  try {
+    let url = `${REST_URL}/messages/history?withUser=${encodeURIComponent(activeChatUser.username)}`;
+    if (lastHistoryFetchAt) url += `&since=${encodeURIComponent(lastHistoryFetchAt)}`;
+    const res = await fetchWithAuth(url);
+    const msgs = await res.json();
+    if (!res.ok || !Array.isArray(msgs)) return;
+
+    let gotNew = false;
+    for (const m of msgs) {
+      if (m._id && document.getElementById(`msg-${m._id}`)) continue;
+      gotNew = true;
+      await appendMessage(m);
+      if (m.sender !== currentUsername) {
+        unreadCounts[m.sender] = 0;
+      }
+    }
+    if (gotNew) {
+      lastHistoryFetchAt = new Date().toISOString();
+      renderFriends();
+    }
+  } catch (e) {
+    console.warn("[Poll] Failed:", e);
+  }
+}
+
 const pendingRequests = {};
 function wsSend(type, payload = {}, expectsResponse = false) {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    // Silently skip realtime delivery if socket is down, persistence already handled via REST
     return Promise.resolve(null);
   }
   const reqId = expectsResponse ? Math.random().toString(36).substring(2, 9) : null;
@@ -835,24 +901,27 @@ document.getElementById("file-input")?.addEventListener("change", async (e) => {
     
     progressDiv.remove();
     
-    const filePayload = {
+    const resMsg = await fetchWithAuth(`${REST_URL}/messages/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        receiver: activeChatUser.username,
+        file_id: result.file_id,
+        file_name: result.file_name || file.name,
+        file_type: result.file_type || file.type
+      })
+    });
+    const persisted = await resMsg.json();
+    if (!resMsg.ok) throw new Error(persisted.error || "Failed to save file message");
+
+    await appendMessage(persisted);
+    wsSend("send_message", {
+      _id: persisted._id,
       receiver: activeChatUser.username,
-      file_id: result.file_id,
-      file_name: result.file_name || file.name,
-      file_type: result.file_type || file.type
-    };
-    wsSend("send_message", filePayload);
-    
-    await appendMessage({
-      sender: currentUsername,
-      receiver: activeChatUser.username,
-      file_id: result.file_id,
-      file_name: result.file_name || file.name,
-      file_type: result.file_type || file.type,
-      timestamp: Date.now(),
-      status: "sent",
-      deleted: false,
-      edited: false
+      file_id: persisted.file_id,
+      file_name: persisted.file_name,
+      file_type: persisted.file_type,
+      timestamp: persisted.timestamp
     });
   } catch (err) {
     progressDiv.remove();
@@ -1285,6 +1354,7 @@ document.querySelectorAll(".nav-item").forEach(item => {
 // =========================================================
 
 function doLogout() {
+  stopMessagePolling();
   if (socket) socket.close();
   localStorage.removeItem("chat_access_token");
   localStorage.removeItem("chat_refresh_token");

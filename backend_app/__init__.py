@@ -32,7 +32,7 @@ def create_app():
         return jsonify({
             "status": "success",
             "message": "SecureChat backend running",
-            "version": "4.0.22"
+            "version": "4.0.26"
         }), 200
 
     @app.route('/api/health')
@@ -41,7 +41,7 @@ def create_app():
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.22",
+            "version": "4.0.26",
             "database": db_status
         }), 200
     
