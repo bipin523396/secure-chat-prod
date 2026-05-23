@@ -62,13 +62,14 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   console.log("LOGIN BUTTON CLICKED");
 
   try {
+    myIdentity = await derivePublicIdentity(u, p);
     const loginUrl = `${REST_URL}/login`;
     console.log("FULL REQUEST URL:", loginUrl);
 
     const res = await fetch(loginUrl, {
       method: "POST", 
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: u, password: p, identity_hash: "" })
+      body: JSON.stringify({ username: u, password: p, identity_hash: myIdentity })
     });
     
     let data;
