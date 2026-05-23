@@ -97,7 +97,7 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     localStorage.setItem("chat_username", currentUsername);
 
     await fetchFriends();
-    // connectSocket(); // Temporarily disabled to stabilize production
+    connectSocket(); // Re-enabled with correct Java WS URL
     
     authContainer.classList.add("hidden");
     chatContainer.classList.remove("hidden");
