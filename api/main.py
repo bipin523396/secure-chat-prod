@@ -17,7 +17,7 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.0.7",
+            "version": "3.0.9",
             "service": "SecureChat Production v3"
         }), 200
 
