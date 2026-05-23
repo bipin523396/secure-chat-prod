@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from app.models.db import db
-from app.utils.jwt_utils import token_required
+from backend_app.models.db import db
+from backend_app.utils.jwt_utils import token_required
 import datetime
 
 messages_bp = Blueprint('messages', __name__)

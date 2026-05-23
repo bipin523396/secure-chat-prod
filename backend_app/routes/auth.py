@@ -2,8 +2,8 @@ import datetime
 import bcrypt
 import jwt
 from flask import Blueprint, request, jsonify
-from app.models.db import users_collection
-from app.utils.jwt_utils import generate_tokens, JWT_REFRESH_SECRET, token_required
+from backend_app.models.db import users_collection
+from backend_app.utils.jwt_utils import generate_tokens, JWT_REFRESH_SECRET, token_required
 
 
 auth_bp = Blueprint('auth', __name__)

@@ -1,12 +1,12 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from app.models.db import init_db, db
-from app.routes.auth import auth_bp
-from app.routes.friends import friends_bp
-from app.routes.media import media_bp
-from app.routes.status import status_bp
-from app.routes.messages import messages_bp
-from app.routes.calls import calls_bp
+from backend_app.models.db import init_db, db
+from backend_app.routes.auth import auth_bp
+from backend_app.routes.friends import friends_bp
+from backend_app.routes.media import media_bp
+from backend_app.routes.status import status_bp
+from backend_app.routes.messages import messages_bp
+from backend_app.routes.calls import calls_bp
 
 import os
 
@@ -27,13 +27,21 @@ def create_app():
     app.register_blueprint(messages_bp, url_prefix='/v8-api/messages')
     app.register_blueprint(calls_bp, url_prefix='/v8-api/calls')
     
+    @app.route('/')
+    def home():
+        return jsonify({
+            "status": "success",
+            "message": "SecureChat backend running",
+            "version": "4.0.7"
+        }), 200
+
     @app.route('/v8-api/health')
     def health():
         db_status = "connected" if db else "disconnected"
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.1",
+            "version": "4.0.7",
             "database": db_status
         }), 200
     

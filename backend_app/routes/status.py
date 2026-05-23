@@ -1,7 +1,7 @@
 import datetime
 from flask import Blueprint, request, jsonify
-from app.models.db import db
-from app.utils.jwt_utils import token_required
+from backend_app.models.db import db
+from backend_app.utils.jwt_utils import token_required
 import os
 
 status_bp = Blueprint('status', __name__)

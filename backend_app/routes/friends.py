@@ -1,7 +1,7 @@
 import datetime
 from flask import Blueprint, request, jsonify
-from app.models.db import db, users_collection, friend_requests_collection, friends_collection, blocked_users_collection
-from app.utils.jwt_utils import token_required
+from backend_app.models.db import db, users_collection, friend_requests_collection, friends_collection, blocked_users_collection
+from backend_app.utils.jwt_utils import token_required
 from google.cloud import firestore
 
 friends_bp = Blueprint('friends', __name__)
