@@ -287,8 +287,17 @@ async function sendMessage() {
   const msgText = messageInput.value.trim();
   if (!msgText || !activeChatUser) return;
 
-  const key = await getSharedKey(activeChatUser.username);
-  const { ciphertext, iv } = await encryptMessage(key, msgText);
+  let ciphertext, iv;
+  try {
+    const key = await getSharedKey(activeChatUser.username);
+    const encrypted = await encryptMessage(key, msgText);
+    ciphertext = encrypted.ciphertext;
+    iv = encrypted.iv;
+  } catch (err) {
+    console.log("Encryption failed, using plain mode:", err);
+    ciphertext = msgText;
+    iv = "plain";
+  }
 
   if (editingMessageId) {
     wsSend("edit_message", { message_id: editingMessageId, ciphertext, iv });
@@ -409,17 +418,21 @@ async function appendMessage(data, preDecrypted = null) {
   if (preDecrypted) {
     content.textContent = preDecrypted;
   } else if (data.ciphertext && data.iv) {
-    content.textContent = "...";
-    const chatPartner = isMe ? data.receiver : data.sender;
-    (async () => {
-      try {
-        const key = await getSharedKey(chatPartner);
-        const text = await decryptMessage(key, data.ciphertext, data.iv);
-        content.textContent = text;
-        const el = document.getElementById(`last-msg-${chatPartner}`);
-        if (el) el.textContent = text;
-      } catch (e) { content.textContent = "[Decryption Failed]"; }
-    })();
+    if (data.iv === "plain") {
+      content.textContent = data.ciphertext;
+    } else {
+      content.textContent = "...";
+      const chatPartner = isMe ? data.receiver : data.sender;
+      (async () => {
+        try {
+          const key = await getSharedKey(chatPartner);
+          const text = await decryptMessage(key, data.ciphertext, data.iv);
+          content.textContent = text;
+          const el = document.getElementById(`last-msg-${chatPartner}`);
+          if (el) el.textContent = text;
+        } catch (e) { content.textContent = "[Decryption Failed]"; }
+      })();
+    }
   } else {
     content.textContent = data.text || "[No content]";
   }
