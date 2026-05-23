@@ -1,10 +1,12 @@
-const REST_URL = "https://secure-chat-prod.onrender.com/api";
+const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000/api"
+    : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 // WebSocket Configuration
 // On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
-    : `wss://secure-chat-java-server.onrender.com`;
+    : `wss://secure-chat-prod.onrender.com`;
 
 let socket = null;
 let currentUsername = null;
@@ -60,7 +62,7 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   console.log("LOGIN BUTTON CLICKED");
 
   try {
-    const loginUrl = "https://secure-chat-prod.onrender.com/api/login";
+    const loginUrl = `${REST_URL}/login`;
     console.log("FULL REQUEST URL:", loginUrl);
 
     const res = await fetch(loginUrl, {
