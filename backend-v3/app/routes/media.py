@@ -50,7 +50,7 @@ def upload_file(current_user_id):
     return jsonify({
         'msg': 'File uploaded successfully',
         'file_id': file_uuid,
-        'file_url': f"/api/media/download/{file_uuid}",
+        'file_url': f"/v3-api/media/download/{file_uuid}",
         'file_name': file.filename,
         'file_type': content_type
     }), 201

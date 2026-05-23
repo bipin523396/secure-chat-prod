@@ -12,7 +12,7 @@ try:
     from app import create_app
     app = create_app()
     
-    @app.route('/api/health')
+    @app.route('/v3-api/health')
     def health_check():
         return jsonify({
             "status": "ok",
@@ -26,7 +26,7 @@ except Exception as e:
     print(f"CRITICAL: Backend failed to start: {error_trace}")
     
     app = Flask(__name__)
-    @app.route('/api/health')
+    @app.route('/v3-api/health')
     def health_error():
         return jsonify({
             "status": "error",
