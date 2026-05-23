@@ -525,7 +525,11 @@ function connectSocket() {
                const text = await decryptMessage(key, payload.ciphertext, payload.iv);
                const span = editEl.querySelector("span");
                if (span) span.textContent = text;
-             } catch(e) {}
+             } catch(e) {
+               console.log("Decryption failed for edited message, using raw text");
+               const span = editEl.querySelector("span");
+               if (span) span.textContent = payload.ciphertext;
+             }
           })();
           const meta = editEl.querySelector(".message-meta");
           if (meta && !meta.querySelector(".edited-label")) {
