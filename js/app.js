@@ -225,15 +225,20 @@ async function openChat(friend) {
   updatePresenceUI(friend.username, friend.is_online, friend.last_seen);
   document.getElementById("message-list").innerHTML = "";
 
+  // 1. Load history from Firestore via REST API (PERSISTENCE)
+  try {
+    const res = await fetchWithAuth(`${REST_URL}/messages/history?withUser=${friend.username}`);
+    const msgs = await res.json();
+    if (res.ok && msgs) {
+      for (const m of msgs) await appendMessage(m);
+    }
+  } catch (err) {
+    console.warn("[REST] Failed to load chat history:", err);
+  }
+
+  // 2. Fallback or Sync with WebSocket (REALTIME)
   if (socket && socket.readyState === WebSocket.OPEN) {
-    wsSend("fetch_history", { withUser: friend.username }, true)
-      .then(async msgs => {
-        if (msgs && msgs.length > 0) {
-          for (const m of msgs) await appendMessage(m);
-        }
-        wsSend("mark_read", { sender: friend.username });
-      })
-      .catch(err => console.warn("[WS] fetch_history failed:", err));
+    wsSend("mark_read", { sender: friend.username });
   }
 
   renderFriends();
@@ -303,6 +308,7 @@ async function sendMessage() {
   }
 
   if (editingMessageId) {
+    // For now, keep edit via WS or implement /api/messages/edit
     wsSend("edit_message", { message_id: editingMessageId, ciphertext, iv });
     const msgEl = document.getElementById(`msg-${editingMessageId}`);
     if (msgEl) {
@@ -314,10 +320,34 @@ async function sendMessage() {
   }
 
   messageInput.value = "";
-  // Optimistic UI
-  await appendMessage({ sender: currentUsername, receiver: activeChatUser.username, ciphertext, iv, timestamp: Date.now(), status: "sent" }, msgText);
-  // Send via WebSocket
-  wsSend("send_message", { receiver: activeChatUser.username, ciphertext, iv });
+  
+  try {
+    // 1. PERSIST to Firestore via REST API
+    const res = await fetchWithAuth(`${REST_URL}/messages/send`, {
+      method: "POST",
+      body: JSON.stringify({ receiver: activeChatUser.username, ciphertext, iv })
+    });
+    const persistedMsg = await res.json();
+    
+    if (!res.ok) throw new Error(persistedMsg.error || "Failed to persist message");
+
+    // 2. UPDATE UI optimistically with the real database ID
+    await appendMessage(persistedMsg, msgText);
+    
+    // 3. NOTIFY via WebSocket for realtime delivery
+    wsSend("send_message", { 
+      _id: persistedMsg._id,
+      receiver: activeChatUser.username, 
+      ciphertext, 
+      iv,
+      timestamp: persistedMsg.timestamp 
+    });
+    
+  } catch (e) {
+    console.error("Message persistence failed:", e);
+    showToast("Failed to send message: " + e.message);
+  }
+
   wsSend("typing", { receiver: activeChatUser.username, is_typing: false });
 }
 
@@ -478,17 +508,9 @@ function connectSocket() {
 
   socket.onopen = () => {
     console.log("[WS] Connected");
-    // Re-fetch history for active chat after connect/reconnect
+    // History is now loaded via REST in openChat, so we only sync unread status here
     if (activeChatUser) {
-      document.getElementById("message-list").innerHTML = "";
-      wsSend("fetch_history", { withUser: activeChatUser.username }, true)
-        .then(async msgs => {
-          if (msgs && msgs.length > 0) {
-            for (const m of msgs) await appendMessage(m);
-          }
-          wsSend("mark_read", { sender: activeChatUser.username });
-        })
-        .catch(() => {});
+      wsSend("mark_read", { sender: activeChatUser.username });
     }
   };
   socket.onclose = () => {
@@ -614,7 +636,7 @@ function connectSocket() {
 const pendingRequests = {};
 function wsSend(type, payload = {}, expectsResponse = false) {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
-    console.log("WebSocket disabled");
+    // Silently skip realtime delivery if socket is down, persistence already handled via REST
     return Promise.resolve(null);
   }
   const reqId = expectsResponse ? Math.random().toString(36).substring(2, 9) : null;
@@ -624,9 +646,15 @@ function wsSend(type, payload = {}, expectsResponse = false) {
   if (expectsResponse) {
     return new Promise((resolve) => {
       pendingRequests[reqId] = resolve;
+      setTimeout(() => {
+        if (pendingRequests[reqId]) {
+          delete pendingRequests[reqId];
+          resolve(null);
+        }
+      }, 5000);
     });
   }
-  return Promise.resolve();
+  return Promise.resolve(null);
 }
 
 // =========================================================
