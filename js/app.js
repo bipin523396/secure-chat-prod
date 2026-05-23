@@ -593,7 +593,10 @@ function connectSocket() {
 
 const pendingRequests = {};
 function wsSend(type, payload = {}, expectsResponse = false) {
-  if (!socket || socket.readyState !== WebSocket.OPEN) return Promise.reject("Socket not open");
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.log("WebSocket currently disabled or not connected");
+    return Promise.resolve(); // Return resolved promise to avoid uncaught rejection
+  }
   const reqId = expectsResponse ? Math.random().toString(36).substring(2, 9) : null;
   const msg = { type, payload, reqId };
   socket.send(JSON.stringify(msg));
