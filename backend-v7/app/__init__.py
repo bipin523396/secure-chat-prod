@@ -17,20 +17,20 @@ def create_app():
     app = Flask(__name__, static_folder=static_dir, static_url_path='')
     
     # Configure CORS to allow all for API routes
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api-v7/*": {"origins": "*"}})
     
     # Initialize DB indexes
     init_db()
     
     # Register Blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api')
-    app.register_blueprint(friends_bp, url_prefix='/api/friends')
-    app.register_blueprint(media_bp, url_prefix='/api/media')
-    app.register_blueprint(status_bp, url_prefix='/api/status')
-    app.register_blueprint(messages_bp, url_prefix='/api/messages')
-    app.register_blueprint(calls_bp, url_prefix='/api/calls')
+    app.register_blueprint(auth_bp, url_prefix='/api-v7')
+    app.register_blueprint(friends_bp, url_prefix='/api-v7/friends')
+    app.register_blueprint(media_bp, url_prefix='/api-v7/media')
+    app.register_blueprint(status_bp, url_prefix='/api-v7/status')
+    app.register_blueprint(messages_bp, url_prefix='/api-v7/messages')
+    app.register_blueprint(calls_bp, url_prefix='/api-v7/calls')
     
-    @app.route('/api/health')
+    @app.route('/api-v7/health')
     def health():
         db_status = "connected" if db else "disconnected"
         return jsonify({
