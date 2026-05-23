@@ -19,15 +19,15 @@ try:
         return jsonify({
             "status": "success",
             "message": "SecureChat backend running",
-            "version": "4.0.3"
+            "version": "4.0.5"
         }), 200
 
-    @app.route('/api/health')
+    @app.route('/v8-api/health')
     def health_check():
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "4.0.3",
+            "version": "4.0.5",
             "service": "SecureChat Standard Production"
         }), 200
 
@@ -36,13 +36,13 @@ except Exception as e:
     print(f"CRITICAL: Backend failed to start: {error_trace}")
     
     app = Flask(__name__)
-    @app.route('/api/health')
+    @app.route('/v8-api/health')
     def health_error():
         return jsonify({
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "4.0.0-failure"
+            "version": "4.0.5-failure"
         }), 500
 
 # Vercel's required entry point
