@@ -1,4 +1,4 @@
-const VERSION = "4.0.28";
+const VERSION = "4.0.29";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
@@ -9,6 +9,8 @@ console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
     : "wss://secure-chat-java-server.onrender.com";
+// Set true when secure-chat-java-server on Render is running
+const ENABLE_WEBSOCKET = false;
 
 let socket = null;
 let messagePollTimer = null;
@@ -532,6 +534,11 @@ function buildMeta(data, isMe) {
 // =========================================================
 
 function connectSocket() {
+  if (!ENABLE_WEBSOCKET) {
+    updateConnectionStatus(false);
+    startMessagePolling();
+    return;
+  }
   if (!accessToken) return;
   if (socket) socket.close();
   socket = new WebSocket(`${WS_URL}?token=${encodeURIComponent(accessToken)}`);
@@ -549,10 +556,12 @@ function connectSocket() {
     startMessagePolling();
   };
   socket.onclose = () => {
-    console.log("[WS] Disconnected. Reconnecting...");
     updateConnectionStatus(false);
     startMessagePolling();
-    setTimeout(connectSocket, 5000);
+    if (ENABLE_WEBSOCKET) {
+      console.log("[WS] Disconnected. Reconnecting...");
+      setTimeout(connectSocket, 5000);
+    }
   };
 
   socket.onmessage = async (event) => {

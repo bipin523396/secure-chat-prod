@@ -3,6 +3,24 @@
 
 const PBKDF2_ITERATIONS = 100000;
 
+/** Web Crypto digest requires ArrayBuffer or TypedArray — normalize all inputs. */
+function toDigestInput(value) {
+  if (typeof value === "string") {
+    return new TextEncoder().encode(value);
+  }
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value);
+  }
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  throw new TypeError("digest input must be string, ArrayBuffer, or TypedArray");
+}
+
+async function digestSha256(value) {
+  return crypto.subtle.digest("SHA-256", toDigestInput(value));
+}
+
 /**
  * Derives a deterministic seed from username + password.
  */
@@ -33,7 +51,7 @@ async function getPersistentKeyPair(username, password) {
   // We will use the seed to generate a deterministic key pair.
   // Note: This is an advanced trick. We use the seed to create a deterministic JWK.
   
-  const hash = await crypto.subtle.digest("SHA-256", seed);
+  const hash = await digestSha256(seed);
   const d = btoa(String.fromCharCode(...new Uint8Array(hash)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     
@@ -49,16 +67,16 @@ async function getPersistentKeyPair(username, password) {
  */
 async function getSharedChatKey(mySeed, theirIdentity) {
   const enc = new TextEncoder();
-  const myId = await crypto.subtle.digest("SHA-256", mySeed);
+  const myId = await digestSha256(mySeed);
   const myIdHex = arrayBufferToHex(myId);
-  
+
   const combined = [myIdHex, theirIdentity].sort();
   const combinedBuffer = enc.encode(combined.join("|"));
-  
-  const finalSeed = await crypto.subtle.digest("SHA-256", combinedBuffer);
-  
+
+  const finalSeed = await digestSha256(combinedBuffer);
+
   return await crypto.subtle.importKey(
-    "raw", finalSeed, "AES-GCM", false, ["encrypt", "decrypt"]
+    "raw", new Uint8Array(finalSeed), "AES-GCM", false, ["encrypt", "decrypt"]
   );
 }
 
@@ -89,7 +107,7 @@ async function decryptMessage(key, ciphertext, iv) {
 
 async function derivePublicIdentity(username, password) {
   const seed = await deriveSeed(username, password);
-  const hash = await crypto.subtle.digest("SHA-256", seed);
+  const hash = await digestSha256(seed);
   return arrayBufferToHex(hash);
 }
 
