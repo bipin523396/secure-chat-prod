@@ -1,35 +1,14 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "backend-v7/app_main.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "css/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "crypto.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "style.css",
-      "use": "@vercel/static"
+  "functions": {
+    "backend-v7/app_main.py": {
+      "runtime": "@vercel/python"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api-v7/(.*)",
-      "destination": "backend-v7/app_main.py"
+      "destination": "/backend-v7/app_main.py"
     },
     {
       "source": "/(.*)",
