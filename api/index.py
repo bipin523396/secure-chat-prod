@@ -19,19 +19,9 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "4.0.1",
+            "version": "4.0.2",
             "service": "SecureChat Standard Production"
         }), 200
-
-    @app.route('/api/login', methods=['GET', 'POST'])
-    def index_login():
-        from app.routes.auth import login
-        return login()
-
-    @app.route('/api/register', methods=['GET', 'POST'])
-    def index_register():
-        from app.routes.auth import register
-        return register()
 
 except Exception as e:
     error_trace = traceback.format_exc()
