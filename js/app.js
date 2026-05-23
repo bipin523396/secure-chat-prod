@@ -1,4 +1,4 @@
-const VERSION = "4.0.30";
+const VERSION = "4.0.31";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
@@ -15,6 +15,7 @@ const ENABLE_WEBSOCKET = false;
 let socket = null;
 let messagePollTimer = null;
 let lastHistoryFetchAt = null;
+const lastPollCursor = {}; // per-chat ISO timestamp for inbox polling
 let currentUsername = null;
 let currentPassword = null; // Kept in memory to derive keys
 let accessToken = null;
@@ -257,7 +258,12 @@ async function openChat(friend) {
     const res = await fetchWithAuth(`${REST_URL}/messages/history?withUser=${encodeURIComponent(friend.username)}`);
     const msgs = await res.json();
     if (res.ok && Array.isArray(msgs)) {
-      for (const m of msgs) await appendMessage(m);
+      let maxTs = lastHistoryFetchAt;
+      for (const m of msgs) {
+        await appendMessage(m);
+        if (m.timestamp && m.timestamp > maxTs) maxTs = m.timestamp;
+      }
+      lastPollCursor[friend.username] = maxTs;
     } else if (!res.ok) {
       console.warn("[REST] History error:", msgs);
       showToast(msgs.error || "Could not load chat history");
@@ -355,11 +361,16 @@ async function sendMessage() {
     // 1. PERSIST to Firestore via REST API
     const res = await fetchWithAuth(`${REST_URL}/messages/send`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ receiver: activeChatUser.username, ciphertext, iv })
     });
     const persistedMsg = await res.json();
     
     if (!res.ok) throw new Error(persistedMsg.error || "Failed to persist message");
+
+    if (persistedMsg.timestamp) {
+      lastPollCursor[activeChatUser.username] = persistedMsg.timestamp;
+    }
 
     // 2. UPDATE UI optimistically with the real database ID
     await appendMessage(persistedMsg, msgText);
@@ -691,7 +702,8 @@ function updateConnectionStatus(connected) {
 
 function startMessagePolling() {
   if (messagePollTimer) return;
-  messagePollTimer = setInterval(pollActiveChat, 4000);
+  pollInbox();
+  messagePollTimer = setInterval(pollInbox, 3000);
 }
 
 function stopMessagePolling() {
@@ -701,35 +713,75 @@ function stopMessagePolling() {
   }
 }
 
-async function pollActiveChat() {
-  if (!activeChatUser || activeChatUser.username === currentUsername) return;
+function updateContactPreview(partner, m) {
+  const el = document.getElementById(`last-msg-${partner}`);
+  if (!el) return;
+  if (m.iv === "plain" && typeof m.ciphertext === "string") {
+    el.textContent = m.ciphertext;
+  } else {
+    el.textContent = "New message";
+  }
+}
+
+/** Poll every friend chat (WhatsApp-style inbox sync without WebSocket). */
+async function pollInbox() {
+  if (!accessToken || !currentUsername) return;
   if (socket && socket.readyState === WebSocket.OPEN) {
     stopMessagePolling();
     return;
   }
 
+  const partners = friendsList.filter((f) => f.username !== currentUsername);
+  if (
+    activeChatUser &&
+    activeChatUser.username !== currentUsername &&
+    !partners.some((f) => f.username === activeChatUser.username)
+  ) {
+    partners.push(activeChatUser);
+  }
+
+  for (const friend of partners) {
+    await pollMessagesForUser(friend.username);
+  }
+  renderFriends();
+  updateTotalUnreadBadge();
+}
+
+async function pollMessagesForUser(partnerUsername) {
   try {
-    let url = `${REST_URL}/messages/history?withUser=${encodeURIComponent(activeChatUser.username)}`;
-    if (lastHistoryFetchAt) url += `&since=${encodeURIComponent(lastHistoryFetchAt)}`;
+    let url = `${REST_URL}/messages/history?withUser=${encodeURIComponent(partnerUsername)}`;
+    const since = lastPollCursor[partnerUsername];
+    if (since) url += `&since=${encodeURIComponent(since)}`;
+
     const res = await fetchWithAuth(url);
     const msgs = await res.json();
     if (!res.ok || !Array.isArray(msgs)) return;
 
-    let gotNew = false;
+    const isActiveChat =
+      activeChatUser && activeChatUser.username === partnerUsername;
+    let maxTs = since || "";
+
     for (const m of msgs) {
+      if (m.timestamp && m.timestamp > maxTs) maxTs = m.timestamp;
       if (m._id && document.getElementById(`msg-${m._id}`)) continue;
-      gotNew = true;
-      await appendMessage(m);
-      if (m.sender !== currentUsername) {
-        unreadCounts[m.sender] = 0;
+
+      const fromThem =
+        String(m.sender).trim().toLowerCase() !==
+        String(currentUsername).trim().toLowerCase();
+
+      if (isActiveChat) {
+        await appendMessage(m);
+        if (fromThem) unreadCounts[partnerUsername] = 0;
+      } else if (fromThem) {
+        unreadCounts[partnerUsername] = (unreadCounts[partnerUsername] || 0) + 1;
+        updateContactPreview(partnerUsername, m);
+        if (notifEnabled && soundEnabled) playNotifSound();
       }
     }
-    if (gotNew) {
-      lastHistoryFetchAt = new Date().toISOString();
-      renderFriends();
-    }
+
+    if (maxTs) lastPollCursor[partnerUsername] = maxTs;
   } catch (e) {
-    console.warn("[Poll] Failed:", e);
+    console.warn("[Poll]", partnerUsername, e);
   }
 }
 

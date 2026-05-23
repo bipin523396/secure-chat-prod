@@ -12,11 +12,26 @@
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
+  <script>
+    (function () {
+      var BUILD = "4.0.31";
+      var key = "sc_app_build";
+      try {
+        if (localStorage.getItem(key) !== BUILD) {
+          localStorage.setItem(key, BUILD);
+          var u = new URL(location.href);
+          u.searchParams.set("_v", BUILD);
+          location.replace(u.toString());
+        }
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Auth Container -->
   <div id="auth-container">
     <div class="auth-card">
       <h1>SecureChat</h1>
+      <p id="build-tag" style="text-align:center;font-size:12px;color:#667781;margin:-8px 0 12px;">build 4.0.31</p>
       <div class="form-group">
         <label>Username</label>
         <input type="text" id="username" placeholder="e.g. bipin">
@@ -482,9 +497,9 @@
   </script>
 
   <div id="toast-container" class="toast-container"></div>
-  <script src="crypto.js?v=4.0.30"></script>
-  <script src="js/app.js?v=4.0.30"></script>
-  <script src="js/calling.js?v=4.0.30"></script>
+  <script src="crypto.js?v=4.0.31"></script>
+  <script src="js/app.js?v=4.0.31"></script>
+  <script src="js/calling.js?v=4.0.31"></script>
 
 </body>
 </html>
