@@ -96,8 +96,8 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     localStorage.setItem("chat_username", currentUsername);
 
     await fetchFriends();
-    connectSocket();
-
+    // connectSocket(); // Temporarily disabled to stabilize production
+    
     authContainer.classList.add("hidden");
     chatContainer.classList.remove("hidden");
     if (!activeChatUser) openChat({ username: currentUsername, is_online: true });
