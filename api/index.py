@@ -3,10 +3,10 @@ import sys
 import traceback
 from flask import Flask, jsonify, request
 
-# Ensure the 'api' directory is in the path so 'app' package can be found
-api_dir = os.path.dirname(os.path.abspath(__file__))
-if api_dir not in sys.path:
-    sys.path.insert(0, api_dir)
+# Ensure the root directory is in the path so 'app' package can be found
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
 try:
     from app import create_app
@@ -17,8 +17,8 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.1.7",
-            "service": "SecureChat Production v4"
+            "version": "3.1.8",
+            "service": "SecureChat Production v5"
         }), 200
 
 except Exception as e:
@@ -32,7 +32,7 @@ except Exception as e:
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "3.1.7-failure"
+            "version": "3.1.8-failure"
         }), 500
 
 # Vercel's required entry point
