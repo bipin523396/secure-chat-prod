@@ -2,6 +2,7 @@ import datetime
 from flask import Blueprint, request, jsonify
 from backend_app.models.db import db, users_collection, friend_requests_collection, friends_collection, blocked_users_collection
 from backend_app.utils.jwt_utils import token_required
+from backend_app.utils.serialize import format_datetime
 from google.cloud import firestore
 
 friends_bp = Blueprint('friends', __name__)
@@ -103,7 +104,7 @@ def get_received_requests(current_user_id):
                 'request_id': doc.id,
                 'sender_id': data['sender_id'],
                 'sender_username': sender['username'],
-                'created_at': data['created_at'].isoformat()
+                'created_at': format_datetime(data.get('created_at'))
             })
     return jsonify(results), 200
 
@@ -178,9 +179,12 @@ def list_friends(current_user_id):
                     'status_message': user.get('status_message'),
                     'is_online': user.get('is_online', False),
                     'is_archived': f_data.get('is_archived', False),
-                    'last_seen': user.get('last_seen').isoformat() if user.get('last_seen') else None
+                    'last_seen': format_datetime(user.get('last_seen')),
                 })
             
         return jsonify(results), 200
     except Exception as e:
+        import traceback
+        print('Friends list error:', e)
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500

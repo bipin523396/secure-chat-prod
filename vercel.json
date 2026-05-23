@@ -8,20 +8,29 @@
       ]
     },
     {
-      "source": "/(js|css)/(.+)",
+      "source": "/js/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
+    },
+    {
+      "source": "/crypto.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://secure-chat-prod.onrender.com/api/:path*",
+      "permanent": false
     }
   ],
   "rewrites": [
     {
       "source": "/favicon.ico",
       "destination": "/favicon.svg"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "https://secure-chat-prod.onrender.com/api/:path*"
     }
   ]
 }

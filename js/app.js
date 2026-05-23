@@ -1,12 +1,14 @@
-const VERSION = "4.0.34";
+const VERSION = "4.0.35";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
-// API runs on Render (Firebase env). Vercel hosts static UI only.
-const REST_URL = USE_LOCAL_API
-    ? "http://localhost:8000/api"
-    : "https://secure-chat-prod.onrender.com/api";
+// API always on Render (Firebase). Never use Vercel /api (no serverless backend).
+const RENDER_API = "https://secure-chat-prod.onrender.com/api";
+const REST_URL = USE_LOCAL_API ? "http://localhost:8000/api" : RENDER_API;
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
+if (!USE_LOCAL_API && typeof window !== "undefined" && window.location.origin.includes("vercel.app")) {
+  console.log("[INIT] UI on Vercel, API on Render — do not open /api/... URLs in the browser");
+}
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
     : "wss://secure-chat-java-server.onrender.com";
@@ -1521,8 +1523,14 @@ async function restoreSession() {
     }
 
     const res = await fetchWithAuth(`${REST_URL}/friends/list`);
+    if (res.status === 401) {
+      console.warn("[SESSION] Token expired, please log in again");
+      return;
+    }
     if (!res.ok) {
-      console.warn("[SESSION] Token invalid, staying on login");
+      const err = await res.json().catch(() => ({}));
+      console.warn("[SESSION] Server error:", res.status, err);
+      showToast(err.error || `Server error (${res.status}). Log in again.`);
       return;
     }
 
