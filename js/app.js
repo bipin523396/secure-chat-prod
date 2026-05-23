@@ -1,10 +1,15 @@
-const VERSION = "4.0.31";
+const VERSION = "4.0.32";
 console.log(`[APP] Version: ${VERSION}`);
 const IS_LOCAL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const USE_LOCAL_API = IS_LOCAL && new URLSearchParams(window.location.search).has("localApi");
+const ON_VERCEL =
+  window.location.hostname.endsWith(".vercel.app") ||
+  window.location.hostname.includes("vercel.app");
 const REST_URL = USE_LOCAL_API
     ? "http://localhost:8000/api"
-    : "https://secure-chat-prod.onrender.com/api";
+    : ON_VERCEL
+      ? `${window.location.origin}/api`
+      : "https://secure-chat-prod.onrender.com/api";
 console.log(`[INIT] REST_URL set to: ${REST_URL}`);
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
@@ -97,7 +102,8 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     refreshToken = data.refresh_token;
     currentUsername = String(data.username).trim();
     currentPassword = p;
-    mySeed = await getPersistentKeyPair(currentUsername, currentPassword);
+    Object.keys(sharedKeys).forEach((k) => delete sharedKeys[k]);
+    await initCryptoFromPassword(p);
 
     localStorage.setItem("chat_access_token", accessToken);
     localStorage.setItem("chat_refresh_token", refreshToken);
@@ -338,7 +344,11 @@ async function sendMessage() {
     ciphertext = encrypted.ciphertext;
     iv = encrypted.iv;
   } catch (err) {
-    console.log("Encryption failed, using plain mode:", err);
+    console.warn("Encryption failed:", err);
+    if (!mySeed) {
+      showToast("Log in again with your password to send encrypted messages.");
+      return;
+    }
     ciphertext = msgText;
     iv = "plain";
   }
@@ -392,24 +402,46 @@ async function sendMessage() {
   wsSend("typing", { receiver: activeChatUser.username, is_typing: false });
 }
 
-async function getSharedKey(targetUser) {
-  if (sharedKeys[targetUser]) return sharedKeys[targetUser];
-  
-  let friend = friendsList.find(f => f.username === targetUser);
+async function getSharedKey(targetUser, { forceRefresh = false } = {}) {
+  if (!mySeed || !myIdentity) {
+    throw new Error("Crypto not ready — log in again with your password");
+  }
+  if (!forceRefresh && sharedKeys[targetUser]) return sharedKeys[targetUser];
+
+  let friend = friendsList.find((f) => f.username === targetUser);
   if (targetUser === currentUsername) {
     friend = { identity_hash: myIdentity };
   }
-  
-  if (!friend || !friend.identity_hash) {
+
+  if (!friend?.identity_hash) {
     await fetchFriends();
-    friend = friendsList.find(f => f.username === targetUser);
+    friend = friendsList.find((f) => f.username === targetUser);
   }
-  
-  if (!friend || !friend.identity_hash) throw new Error("Could not find identity for user: " + targetUser);
-  
-  const key = await getSharedChatKey(mySeed, friend.identity_hash);
+
+  const identityHash = (friend?.identity_hash || "").trim().toLowerCase();
+  if (!identityHash) {
+    throw new Error("Could not find identity for user: " + targetUser);
+  }
+
+  const key = await getSharedChatKey(mySeed, identityHash);
   sharedKeys[targetUser] = key;
   return key;
+}
+
+async function decryptChatMessage(partnerUsername, ciphertext, iv) {
+  if (isPlainMessage(iv)) {
+    return typeof ciphertext === "string" ? ciphertext : String(ciphertext ?? "");
+  }
+  try {
+    const key = await getSharedKey(partnerUsername);
+    return await decryptMessage(key, ciphertext, iv);
+  } catch (firstErr) {
+    console.warn("[Decrypt] retry with fresh identity for", partnerUsername, firstErr);
+    delete sharedKeys[partnerUsername];
+    await fetchFriends();
+    const key = await getSharedKey(partnerUsername, { forceRefresh: true });
+    return await decryptMessage(key, ciphertext, iv);
+  }
 }
 
 async function appendMessage(data, preDecrypted = null) {
@@ -492,20 +524,23 @@ async function appendMessage(data, preDecrypted = null) {
   const content = document.createElement("span");
   if (preDecrypted) {
     content.textContent = preDecrypted;
-  } else if (data.ciphertext && data.iv) {
-    if (data.iv === "plain") {
-      content.textContent = data.ciphertext;
+  } else if (data.ciphertext != null && data.iv != null) {
+    if (isPlainMessage(data.iv)) {
+      content.textContent =
+        typeof data.ciphertext === "string" ? data.ciphertext : String(data.ciphertext);
     } else {
       content.textContent = "...";
       const chatPartner = isMe ? data.receiver : data.sender;
       (async () => {
         try {
-          const key = await getSharedKey(chatPartner);
-          const text = await decryptMessage(key, data.ciphertext, data.iv);
+          const text = await decryptChatMessage(chatPartner, data.ciphertext, data.iv);
           content.textContent = text;
           const el = document.getElementById(`last-msg-${chatPartner}`);
           if (el) el.textContent = text;
-        } catch (e) { content.textContent = "[Decryption Failed]"; }
+        } catch (e) {
+          console.error("[Decrypt] failed for", chatPartner, e);
+          content.textContent = "[Decryption Failed — ask sender to resend]";
+        }
       })();
     }
   } else {
@@ -716,10 +751,10 @@ function stopMessagePolling() {
 function updateContactPreview(partner, m) {
   const el = document.getElementById(`last-msg-${partner}`);
   if (!el) return;
-  if (m.iv === "plain" && typeof m.ciphertext === "string") {
+  if (isPlainMessage(m.iv) && typeof m.ciphertext === "string") {
     el.textContent = m.ciphertext;
   } else {
-    el.textContent = "New message";
+    el.textContent = "🔒 New message";
   }
 }
 

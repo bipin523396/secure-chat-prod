@@ -32,6 +32,17 @@ def create_app():
         response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
         response.headers["Access-Control-Max-Age"] = "86400"
         return response
+
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get("Origin")
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+        else:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return response
     
     # Initialize DB indexes
     init_db()
@@ -49,7 +60,7 @@ def create_app():
         return jsonify({
             "status": "success",
             "message": "SecureChat backend running",
-            "version": "4.0.27"
+            "version": "4.0.32"
         }), 200
 
     @app.route('/api/health')
@@ -58,7 +69,7 @@ def create_app():
         return jsonify({
             "status": "ok", 
             "service": "SecureChat Backend", 
-            "version": "4.0.27",
+            "version": "4.0.32",
             "database": db_status
         }), 200
     

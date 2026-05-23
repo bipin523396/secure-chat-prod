@@ -65,12 +65,31 @@ async function getPersistentKeyPair(username, password) {
  * Derives a shared AES-GCM key between two users deterministically.
  * logic: hash(sort(mySeed, theirIdentity))
  */
+/** Coerce Firestore/JSON ciphertext or IV into Uint8Array. */
+function normalizeByteArray(value, label) {
+  if (value == null) throw new TypeError(`missing ${label}`);
+  if (Array.isArray(value)) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  if (typeof value === "object") {
+    const keys = Object.keys(value)
+      .filter((k) => /^\d+$/.test(k))
+      .sort((a, b) => Number(a) - Number(b));
+    if (keys.length) return new Uint8Array(keys.map((k) => value[k]));
+  }
+  throw new TypeError(`invalid ${label} payload`);
+}
+
 async function getSharedChatKey(mySeed, theirIdentity) {
   const enc = new TextEncoder();
+  const theirId = String(theirIdentity || "").trim().toLowerCase();
+  if (!theirId) throw new Error("Missing peer identity_hash");
+
   const myId = await digestSha256(mySeed);
   const myIdHex = arrayBufferToHex(myId);
 
-  const combined = [myIdHex, theirIdentity].sort();
+  const combined = [myIdHex, theirId].sort();
   const combinedBuffer = enc.encode(combined.join("|"));
 
   const finalSeed = await digestSha256(combinedBuffer);
@@ -93,16 +112,18 @@ async function encryptMessage(key, text) {
 }
 
 async function decryptMessage(key, ciphertext, iv) {
-  try {
-    const data = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: new Uint8Array(iv) },
-      key, new Uint8Array(ciphertext)
-    );
-    return new TextDecoder().decode(data);
-  } catch (e) {
-    console.error("Decryption failed:", e);
-    return "[Decryption Failed]";
-  }
+  const ivBytes = normalizeByteArray(iv, "iv");
+  const ctBytes = normalizeByteArray(ciphertext, "ciphertext");
+  const data = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: ivBytes },
+    key,
+    ctBytes
+  );
+  return new TextDecoder().decode(data);
+}
+
+function isPlainMessage(iv) {
+  return iv === "plain" || iv === '"plain"';
 }
 
 async function derivePublicIdentity(username, password) {
