@@ -1,0 +1,21 @@
+{
+  "name": "secure-chat-prod",
+  "version": "1.0.0",
+  "description": "",
+  "main": "crypto.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bipin523396/secure-chat-prod.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bipin523396/secure-chat-prod/issues"
+  },
+  "homepage": "https://github.com/bipin523396/secure-chat-prod#readme"
+}
