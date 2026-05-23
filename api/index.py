@@ -3,14 +3,10 @@ import sys
 import traceback
 from flask import Flask, jsonify, request
 
-# Ensure the root directory is in the path so 'app' package can be found
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
-
-print(f"DEBUG: sys.path is {sys.path}")
-print(f"DEBUG: root_dir is {root_dir}")
-print(f"DEBUG: files in root are {os.listdir(root_dir)}")
+# Ensure the 'api' directory is in the path so 'app' package can be found
+api_dir = os.path.dirname(os.path.abspath(__file__))
+if api_dir not in sys.path:
+    sys.path.insert(0, api_dir)
 
 try:
     from app import create_app
@@ -21,7 +17,7 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.0.5",
+            "version": "3.0.7",
             "service": "SecureChat Production v3"
         }), 200
 
