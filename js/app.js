@@ -57,13 +57,16 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   const p = document.getElementById("password").value.trim();
   if (!u || !p) return showError("Enter username and password");
 
+  console.log("LOGIN BUTTON CLICKED");
+
   try {
-    myIdentity = await derivePublicIdentity(u, p);
-    const loginUrl = `${REST_URL}/login`;
-    console.log(`[API] Login calling: ${loginUrl}`);
+    const loginUrl = "https://secure-chat-prod.onrender.com/api/login";
+    console.log("FULL REQUEST URL:", loginUrl);
+
     const res = await fetch(loginUrl, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: u, password: p, identity_hash: myIdentity })
+      method: "POST", 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: u, password: p, identity_hash: "" })
     });
     
     let data;
@@ -75,6 +78,8 @@ document.getElementById("login-btn").addEventListener("click", async () => {
       console.error("Server returned non-JSON response:", text);
       throw new Error(`Server Error: ${res.status}. Please check Vercel logs.`);
     }
+
+    console.log("SERVER RESPONSE:", data);
 
     if (!res.ok) throw new Error(data.error || "Login failed");
 
@@ -94,7 +99,10 @@ document.getElementById("login-btn").addEventListener("click", async () => {
     authContainer.classList.add("hidden");
     chatContainer.classList.remove("hidden");
     if (!activeChatUser) openChat({ username: currentUsername, is_online: true });
-  } catch (e) { showError(e.message); }
+  } catch (e) { 
+    console.error("FETCH ERROR:", e);
+    showError(e.message); 
+  }
 });
 
 document.getElementById("register-btn").addEventListener("click", async () => {
