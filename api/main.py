@@ -12,12 +12,12 @@ try:
     from app import create_app
     app = create_app()
     
-    @app.route('/health')
+    @app.route('/api/health')
     def health_check():
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.1.3",
+            "version": "3.1.5",
             "service": "SecureChat Production v3"
         }), 200
 
@@ -26,13 +26,13 @@ except Exception as e:
     print(f"CRITICAL: Backend failed to start: {error_trace}")
     
     app = Flask(__name__)
-    @app.route('/health')
+    @app.route('/api/health')
     def health_error():
         return jsonify({
             "status": "error",
             "message": str(e),
             "traceback": error_trace,
-            "version": "3.1.3-failure"
+            "version": "3.1.5-failure"
         }), 500
 
 # Vercel's required entry point
