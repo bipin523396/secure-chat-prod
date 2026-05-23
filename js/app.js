@@ -58,7 +58,9 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 
   try {
     myIdentity = await derivePublicIdentity(u, p);
-    const res = await fetch(`${REST_URL}/login`, {
+    const loginUrl = `${REST_URL}/login`;
+    console.log(`[API] Login calling: ${loginUrl}`);
+    const res = await fetch(loginUrl, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: u, password: p, identity_hash: myIdentity })
     });
@@ -934,6 +936,7 @@ document.getElementById("add-friend-btn")?.addEventListener("click", () => {
 // =========================================================
 
 async function fetchWithAuth(url, options = {}) {
+  console.log(`[API] fetchWithAuth calling: ${url}`);
   options.headers = options.headers || {};
   options.headers["Authorization"] = `Bearer ${accessToken}`;
   let res = await fetch(url, options);
