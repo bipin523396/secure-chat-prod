@@ -3,10 +3,9 @@ const REST_URL = window.location.hostname === "localhost" || window.location.hos
     : window.location.origin + "/api";
 // WebSocket Configuration
 // On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).
-// Update the URL below once your Java server is deployed.
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? `ws://${window.location.hostname}:5001`
-    : `wss://secure-chat-java-server.onrender.com`; // Fallback for production
+    : `wss://secure-chat-java-server.onrender.com`;
 
 let socket = null;
 let currentUsername = null;
