@@ -21,8 +21,10 @@ def update_public_key(current_user_id):
     )
     return jsonify({'msg': 'Public key updated'}), 200
 
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'GET':
+        return jsonify({'message': 'Registration endpoint active. Use POST to register.'}), 200
     data = request.json
     username = data.get('username')
     password = data.get('password')
@@ -51,8 +53,10 @@ def register():
     users_collection.insert_one(new_user)
     return jsonify({'msg': 'User created successfully'}), 201
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'GET':
+        return jsonify({'message': 'Login endpoint active. Use POST to login.'}), 200
     data = request.json
     username = data.get('username')
     password = data.get('password')
