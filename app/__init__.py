@@ -11,8 +11,8 @@ from app.routes.calls import calls_bp
 import os
 
 def create_app():
-    # Files moved to root for better Vercel support
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    # app is in root, so base_dir is one level up from app/__init__.py
+    base_dir = os.path.dirname(os.path.dirname(__file__))
     static_dir = base_dir
     app = Flask(__name__, static_folder=static_dir, static_url_path='')
     

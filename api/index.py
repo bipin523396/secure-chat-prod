@@ -3,11 +3,7 @@ import sys
 import traceback
 from flask import Flask, jsonify
 
-# Ensure the 'api' directory is in the path so 'app' package can be found
-api_dir = os.path.dirname(os.path.abspath(__file__))
-if api_dir not in sys.path:
-    sys.path.insert(0, api_dir)
-
+# app is now in the root, so this should work directly
 try:
     from app import create_app
     app = create_app()
@@ -17,7 +13,7 @@ try:
         return jsonify({
             "status": "ok",
             "database": "connected",
-            "version": "3.0.0",
+            "version": "3.0.2",
             "service": "SecureChat Production v3"
         }), 200
 
