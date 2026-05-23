@@ -1,6 +1,4 @@
-const REST_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:8000/api"
-    : "https://secure-chat-prod.onrender.com/api";
+const REST_URL = "https://secure-chat-prod.onrender.com/api";
 // WebSocket Configuration
 // On Vercel (Production), you must host the Java WebSocket server separately (e.g., Render/Railway).
 const WS_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"

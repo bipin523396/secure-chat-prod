@@ -2,6 +2,7 @@ import os
 import sys
 import traceback
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 # Ensure the api directory is in the path so 'app' package can be found
 api_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,6 +12,7 @@ if api_dir not in sys.path:
 try:
     from app import create_app
     app = create_app()
+    CORS(app)
     
     @app.route('/api/health')
     def health_check():
