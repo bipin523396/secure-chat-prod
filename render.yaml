@@ -3,7 +3,8 @@ services:
     name: secure-chat-prod
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn index:app --bind 0.0.0.0:$PORT
+    # Updated start command to match wrapper in api folder
+    startCommand: gunicorn api.index:app --bind 0.0.0.0:$PORT
     envVars:
       - key: JWT_SECRET
         sync: false
